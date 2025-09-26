@@ -17,14 +17,15 @@
 BUILD_DIR = ./build
 EXE = $(BUILD_DIR)/imgui-data-structure
 IMGUI_DIR = ./imgui
-SOURCES = ./src/main.cpp
+SRC_DIR = ./src
+SOURCES = $(SRC_DIR)/main.cpp
 SOURCES += $(IMGUI_DIR)/imgui.cpp $(IMGUI_DIR)/imgui_demo.cpp $(IMGUI_DIR)/imgui_draw.cpp $(IMGUI_DIR)/imgui_tables.cpp $(IMGUI_DIR)/imgui_widgets.cpp
 SOURCES += $(IMGUI_DIR)/backends/imgui_impl_glfw.cpp $(IMGUI_DIR)/backends/imgui_impl_opengl3.cpp
 OBJS = $(addprefix $(BUILD_DIR)/, $(addsuffix .o, $(basename $(notdir $(SOURCES)))))
 UNAME_S := $(shell uname -s)
 LINUX_GL_LIBS = -lGL
 
-CXXFLAGS = -std=c++11 -I$(IMGUI_DIR) -I$(IMGUI_DIR)/backends
+CXXFLAGS = -std=c++14 -I$(IMGUI_DIR) -I$(IMGUI_DIR)/backends -I$(SRC_DIR)
 CXXFLAGS += -g -Wall -Wformat
 LIBS =
 
@@ -71,7 +72,7 @@ endif
 ## BUILD RULES
 ##---------------------------------------------------------------------
 
-$(BUILD_DIR)/%.o: ./src/%.cpp
+$(BUILD_DIR)/%.o: $(SRC_DIR)/%.cpp
 	@mkdir -p $(BUILD_DIR)
 	$(CXX) $(CXXFLAGS) -c -o $@ $<
 
