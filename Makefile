@@ -15,7 +15,7 @@
 #CXX = clang++
 
 BUILD_DIR = ./build
-EXE = $(BUILD_DIR)/imgui-data-structure
+EXE = $(BUILD_DIR)/data-structure-visualizer
 IMGUI_DIR = ./imgui
 SOURCES = ./src/main.cpp
 SOURCES += $(IMGUI_DIR)/imgui.cpp $(IMGUI_DIR)/imgui_demo.cpp $(IMGUI_DIR)/imgui_draw.cpp $(IMGUI_DIR)/imgui_tables.cpp $(IMGUI_DIR)/imgui_widgets.cpp
