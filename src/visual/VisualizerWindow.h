@@ -98,16 +98,48 @@ private:
         ImGui::Text("Array Operations:");
         ImGui::Spacing();
 
-        // Display current array state
+        // Display current array state visually
         ImGui::TextColored(ImVec4(0.2f, 0.8f, 0.2f, 1.0f), "Current Array:");
-        std::string arrayStr = "[ ";
-        for (size_t i = 0; i < arrayDS.data.size(); ++i) {
-            arrayStr += std::to_string(arrayDS.data[i]);
-            if (i < arrayDS.data.size() - 1) arrayStr += ", ";
-        }
-        arrayStr += " ]";
-        ImGui::Text("%s", arrayStr.c_str());
         ImGui::Text("Size: %zu", arrayDS.data.size());
+        ImGui::Spacing();
+
+        // Visual representation of array
+        ImDrawList* draw_list = ImGui::GetWindowDrawList();
+        ImVec2 canvas_pos = ImGui::GetCursorScreenPos();
+        float box_size = 60.0f;
+        float spacing = 5.0f;
+
+        for (size_t i = 0; i < arrayDS.data.size(); ++i) {
+            ImVec2 box_min = ImVec2(canvas_pos.x + i * (box_size + spacing), canvas_pos.y);
+            ImVec2 box_max = ImVec2(box_min.x + box_size, box_min.y + box_size);
+
+            // Draw box
+            draw_list->AddRectFilled(box_min, box_max, IM_COL32(70, 130, 180, 255));
+            draw_list->AddRect(box_min, box_max, IM_COL32(255, 255, 255, 255), 0.0f, 0, 2.0f);
+
+            // Draw value text centered
+            char value_text[32];
+            snprintf(value_text, sizeof(value_text), "%d", arrayDS.data[i]);
+            ImVec2 text_size = ImGui::CalcTextSize(value_text);
+            ImVec2 text_pos = ImVec2(
+                box_min.x + (box_size - text_size.x) * 0.5f,
+                box_min.y + (box_size - text_size.y) * 0.5f
+            );
+            draw_list->AddText(text_pos, IM_COL32(255, 255, 255, 255), value_text);
+
+            // Draw index below box
+            char index_text[32];
+            snprintf(index_text, sizeof(index_text), "[%zu]", i);
+            ImVec2 index_size = ImGui::CalcTextSize(index_text);
+            ImVec2 index_pos = ImVec2(
+                box_min.x + (box_size - index_size.x) * 0.5f,
+                box_max.y + 5.0f
+            );
+            draw_list->AddText(index_pos, IM_COL32(200, 200, 200, 255), index_text);
+        }
+
+        // Reserve space for the visual representation
+        ImGui::Dummy(ImVec2(arrayDS.data.size() * (box_size + spacing), box_size + 30.0f));
         ImGui::Spacing();
         ImGui::Separator();
         ImGui::Spacing();
@@ -153,8 +185,12 @@ private:
         ImGui::Text("Stack Operations:");
         ImGui::Spacing();
 
-        // Display current stack state
+        // Display current stack state visually
         ImGui::TextColored(ImVec4(0.2f, 0.8f, 0.2f, 1.0f), "Current Stack:");
+        ImGui::Text("Size: %zu", stackDS.data.size());
+        ImGui::Spacing();
+
+        // Get stack elements (top to bottom)
         std::stack<int> tempStack = stackDS.data;
         std::vector<int> stackElements;
         while (!tempStack.empty()) {
@@ -162,18 +198,60 @@ private:
             tempStack.pop();
         }
 
+        // Visual representation of stack
+        ImDrawList* draw_list = ImGui::GetWindowDrawList();
+        ImVec2 canvas_pos = ImGui::GetCursorScreenPos();
+        float box_width = 150.0f;
+        float box_height = 40.0f;
+        float spacing = 5.0f;
+
         if (stackElements.empty()) {
-            ImGui::Text("(empty)");
+            // Draw empty stack container
+            ImVec2 empty_min = ImVec2(canvas_pos.x, canvas_pos.y);
+            ImVec2 empty_max = ImVec2(empty_min.x + box_width, empty_min.y + 100.0f);
+            draw_list->AddRect(empty_min, empty_max, IM_COL32(150, 150, 150, 255), 0.0f, 0, 2.0f);
+
+            const char* empty_text = "(empty)";
+            ImVec2 text_size = ImGui::CalcTextSize(empty_text);
+            ImVec2 text_pos = ImVec2(
+                empty_min.x + (box_width - text_size.x) * 0.5f,
+                empty_min.y + (100.0f - text_size.y) * 0.5f
+            );
+            draw_list->AddText(text_pos, IM_COL32(150, 150, 150, 255), empty_text);
+            ImGui::Dummy(ImVec2(box_width, 100.0f));
         } else {
-            ImGui::Text("Top -> [ ");
-            for (int val : stackElements) {
-                ImGui::SameLine();
-                ImGui::Text("%d ", val);
+            // Draw stack elements from top to bottom
+            for (size_t i = 0; i < stackElements.size(); ++i) {
+                ImVec2 box_min = ImVec2(canvas_pos.x, canvas_pos.y + i * (box_height + spacing));
+                ImVec2 box_max = ImVec2(box_min.x + box_width, box_min.y + box_height);
+
+                // Different color for top element
+                ImU32 box_color = (i == 0) ? IM_COL32(220, 100, 100, 255) : IM_COL32(100, 180, 100, 255);
+                draw_list->AddRectFilled(box_min, box_max, box_color);
+                draw_list->AddRect(box_min, box_max, IM_COL32(255, 255, 255, 255), 0.0f, 0, 2.0f);
+
+                // Draw value text centered
+                char value_text[32];
+                snprintf(value_text, sizeof(value_text), "%d", stackElements[i]);
+                ImVec2 text_size = ImGui::CalcTextSize(value_text);
+                ImVec2 text_pos = ImVec2(
+                    box_min.x + (box_width - text_size.x) * 0.5f,
+                    box_min.y + (box_height - text_size.y) * 0.5f
+                );
+                draw_list->AddText(text_pos, IM_COL32(255, 255, 255, 255), value_text);
+
+                // Label "TOP" for first element
+                if (i == 0) {
+                    const char* top_text = "TOP";
+                    ImVec2 top_text_pos = ImVec2(box_max.x + 10.0f, box_min.y + (box_height - ImGui::CalcTextSize(top_text).y) * 0.5f);
+                    draw_list->AddText(top_text_pos, IM_COL32(220, 100, 100, 255), top_text);
+                }
             }
-            ImGui::SameLine();
-            ImGui::Text("]");
+
+            // Reserve space for the visual representation
+            ImGui::Dummy(ImVec2(box_width + 60.0f, stackElements.size() * (box_height + spacing)));
         }
-        ImGui::Text("Size: %zu", stackDS.data.size());
+
         ImGui::Spacing();
         ImGui::Separator();
         ImGui::Spacing();
