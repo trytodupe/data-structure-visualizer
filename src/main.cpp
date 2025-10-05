@@ -26,6 +26,7 @@
 #include "operation/StackOps.h"
 #include "visual/GuiVisualizer.h"
 #include "visual/HistoryWindow.h"
+#include "visual/VisualizerWindow.h"
 #include <memory>
 
 // [Win32] Our example includes a copy of glfw3.lib pre-compiled with VS2010 to maximize ease of testing and compatibility with old VS compilers.
@@ -146,7 +147,6 @@ int main(int, char**)
 
     // Our state
     bool show_demo_window = false;
-    bool show_visualizer_window = true;
     ImVec4 clear_color = ImVec4(0.45f, 0.55f, 0.60f, 1.00f);
 
     // Data structure visualizer state
@@ -155,15 +155,7 @@ int main(int, char**)
     OperationManager opManager;
     GuiVisualizer visualizer;
     HistoryWindow historyWindow(main_scale);
-
-    // Demo controls
-    static int insertIndex = 0;
-    static int insertValue = 99;
-    static int writeIndex = 0;
-    static int writeValue = 42;
-    static int moveFrom = 0;
-    static int moveTo = 1;
-    static int pushValue = 10;
+    VisualizerWindow visualizerWindow(main_scale);
 
     // Initialize array with some values
     std::vector<int> initialValues = {5, 2, 8, 1, 9};
@@ -201,191 +193,23 @@ int main(int, char**)
         if (show_demo_window)
             ImGui::ShowDemoWindow(&show_demo_window);
 
-        // 2. Data Structure Visualizer Window
-        if (show_visualizer_window)
+        // 2. Control Panel Window
+        if (ImGui::Begin("Control Panel", nullptr, ImGuiWindowFlags_AlwaysAutoResize))
         {
-            ImGui::SetNextWindowSize(ImVec2(1000 * main_scale, 700 * main_scale), ImGuiCond_FirstUseEver);
-            ImGui::Begin("Data Structure Visualizer", &show_visualizer_window);
-
-            ImGui::Text("Interactive Data Structure Operations Demo");
-            ImGui::Separator();
-
-            // Tabs for different data structures
-            if (ImGui::BeginTabBar("DataStructureTabs"))
-            {
-                // === ARRAY TAB ===
-                if (ImGui::BeginTabItem("Array"))
-                {
-                    ImGui::Text("Array Operations:");
-                    ImGui::Spacing();
-
-                    // Display current array state
-                    ImGui::TextColored(ImVec4(0.2f, 0.8f, 0.2f, 1.0f), "Current Array:");
-                    std::string arrayStr = "[ ";
-                    for (size_t i = 0; i < arrayDS.data.size(); ++i) {
-                        arrayStr += std::to_string(arrayDS.data[i]);
-                        if (i < arrayDS.data.size() - 1) arrayStr += ", ";
-                    }
-                    arrayStr += " ]";
-                    ImGui::Text("%s", arrayStr.c_str());
-                    ImGui::Text("Size: %zu", arrayDS.data.size());
-                    ImGui::Spacing();
-                    ImGui::Separator();
-                    ImGui::Spacing();
-
-                    // Write Operation
-                    ImGui::Text("Write Operation:");
-                    ImGui::InputInt("Index##write", &writeIndex);
-                    ImGui::InputInt("Value##write", &writeValue);
-                    if (ImGui::Button("Write to Array")) {
-                        if (writeIndex >= 0) {
-                            auto writeOp = std::make_unique<WriteOp>(writeIndex, writeValue);
-                            auto userOp = std::make_unique<UserOperation>("Manual Write", "Write value to index");
-                            userOp->operations.push_back(std::move(writeOp));
-                            opManager.executeOperation(arrayDS, std::move(userOp));
-                        }
-                    }
-                    ImGui::Spacing();
-
-                    // Move/Swap Operation
-                    ImGui::Text("Move/Swap Operation:");
-                    ImGui::InputInt("From Index##move", &moveFrom);
-                    ImGui::InputInt("To Index##move", &moveTo);
-                    if (ImGui::Button("Swap Elements")) {
-                        if (moveFrom >= 0 && moveTo >= 0 &&
-                            moveFrom < (int)arrayDS.data.size() && moveTo < (int)arrayDS.data.size()) {
-                            auto moveOp = std::make_unique<MoveOp>(moveFrom, moveTo);
-                            auto userOp = std::make_unique<UserOperation>("Manual Swap", "Swap two elements");
-                            userOp->operations.push_back(std::move(moveOp));
-                            opManager.executeOperation(arrayDS, std::move(userOp));
-                        }
-                    }
-                    ImGui::Spacing();
-
-                    // Insert Operation
-                    ImGui::Text("Insert Operation:");
-                    ImGui::InputInt("Index##insert", &insertIndex);
-                    ImGui::InputInt("Value##insert", &insertValue);
-                    if (ImGui::Button("Insert Element")) {
-                        if (insertIndex >= 0 && insertIndex <= (int)arrayDS.data.size()) {
-                            auto insertOp = std::make_unique<ArrayInsert>(arrayDS, insertIndex, insertValue);
-                            opManager.executeOperation(arrayDS, std::move(insertOp));
-                        }
-                    }
-                    ImGui::Spacing();
-
-                    // Delete Operation
-                    if (ImGui::Button("Delete First Element")) {
-                        if (!arrayDS.data.empty()) {
-                            auto deleteOp = std::make_unique<ArrayDelete>(arrayDS, 0);
-                            opManager.executeOperation(arrayDS, std::move(deleteOp));
-                        }
-                    }
-                    ImGui::SameLine();
-                    if (ImGui::Button("Delete Last Element")) {
-                        if (!arrayDS.data.empty()) {
-                            auto deleteOp = std::make_unique<ArrayDelete>(arrayDS, arrayDS.data.size() - 1);
-                            opManager.executeOperation(arrayDS, std::move(deleteOp));
-                        }
-                    }
-                    ImGui::Spacing();
-
-                    // Sort Operation
-                    if (ImGui::Button("Sort Array (Bubble Sort)")) {
-                        auto sortOp = std::make_unique<ArraySort>(arrayDS);
-                        opManager.executeOperation(arrayDS, std::move(sortOp));
-                    }
-                    ImGui::Spacing();
-
-                    // Reset Operation
-                    if (ImGui::Button("Reset Array")) {
-                        std::vector<int> resetValues = {5, 2, 8, 1, 9};
-                        auto resetOp = std::make_unique<ArrayInit>(resetValues);
-                        opManager.executeOperation(arrayDS, std::move(resetOp));
-                    }
-
-                    ImGui::EndTabItem();
-                }
-
-                // === STACK TAB ===
-                if (ImGui::BeginTabItem("Stack"))
-                {
-                    ImGui::Text("Stack Operations:");
-                    ImGui::Spacing();
-
-                    // Display current stack state
-                    ImGui::TextColored(ImVec4(0.2f, 0.8f, 0.2f, 1.0f), "Current Stack:");
-                    std::stack<int> tempStack = stackDS.data;
-                    std::vector<int> stackElements;
-                    while (!tempStack.empty()) {
-                        stackElements.push_back(tempStack.top());
-                        tempStack.pop();
-                    }
-
-                    if (stackElements.empty()) {
-                        ImGui::Text("(empty)");
-                    } else {
-                        ImGui::Text("Top -> [ ");
-                        for (int val : stackElements) {
-                            ImGui::SameLine();
-                            ImGui::Text("%d ", val);
-                        }
-                        ImGui::SameLine();
-                        ImGui::Text("]");
-                    }
-                    ImGui::Text("Size: %zu", stackDS.data.size());
-                    ImGui::Spacing();
-                    ImGui::Separator();
-                    ImGui::Spacing();
-
-                    // Push Operation
-                    ImGui::Text("Push Operation:");
-                    ImGui::InputInt("Value##push", &pushValue);
-                    if (ImGui::Button("Push to Stack")) {
-                        auto pushOp = std::make_unique<StackPush>(pushValue);
-                        opManager.executeOperation(stackDS, std::move(pushOp));
-                    }
-                    ImGui::Spacing();
-
-                    // Pop Operation
-                    if (ImGui::Button("Pop from Stack")) {
-                        if (!stackDS.data.empty()) {
-                            auto popOp = std::make_unique<StackPop>();
-                            opManager.executeOperation(stackDS, std::move(popOp));
-                        }
-                    }
-                    ImGui::Spacing();
-
-                    // Clear Operation
-                    if (ImGui::Button("Clear Stack")) {
-                        auto clearOp = std::make_unique<StackClear>(stackDS);
-                        opManager.executeOperation(stackDS, std::move(clearOp));
-                    }
-                    ImGui::Spacing();
-
-                    // Initialize Stack
-                    if (ImGui::Button("Initialize Stack [1,2,3,4,5]")) {
-                        std::vector<int> values = {1, 2, 3, 4, 5};
-                        auto initOp = std::make_unique<StackInit>(values);
-                        opManager.executeOperation(stackDS, std::move(initOp));
-                    }
-
-                    ImGui::EndTabItem();
-                }
-
-                ImGui::EndTabBar();
+            // Toggle windows
+            bool visualizerOpen = visualizerWindow.getOpen();
+            if (ImGui::Checkbox("Show Visualizer Window", &visualizerOpen)) {
+                visualizerWindow.setOpen(visualizerOpen);
             }
 
-            ImGui::Separator();
-            ImGui::Spacing();
-
-            // Toggle windows
             bool historyOpen = historyWindow.getOpen();
             if (ImGui::Checkbox("Show History Window", &historyOpen)) {
                 historyWindow.setOpen(historyOpen);
             }
-            ImGui::SameLine();
+
             ImGui::Checkbox("Show ImGui Demo", &show_demo_window);
+
+            ImGui::Separator();
 
             if (ImGui::Button("Quit Application"))
                 glfwSetWindowShouldClose(window, GLFW_TRUE);
@@ -396,7 +220,8 @@ int main(int, char**)
             ImGui::End();
         }
 
-        // Render history window
+        // Render visualizer and history windows
+        visualizerWindow.render(arrayDS, stackDS, opManager);
         historyWindow.render(opManager);
 
         // Rendering
