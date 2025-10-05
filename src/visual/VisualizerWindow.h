@@ -23,11 +23,19 @@ private:
     int deleteIndex;
     int pushValue;
 
+    // Visualization state
+    std::unique_ptr<UserOperation> stagedOperation;
+    DataStructure* stagedDataStructure;
+    size_t currentAtomicStep;
+    bool isVisualizing;
+
 public:
     VisualizerWindow(float scale = 1.0f)
         : isOpen(true), windowScale(scale),
           insertIndex(0), insertValue(99),
-          deleteIndex(0), pushValue(10) {}
+          deleteIndex(0), pushValue(10),
+          stagedOperation(nullptr), stagedDataStructure(nullptr),
+          currentAtomicStep(0), isVisualizing(false) {}
 
     /**
      * Show/hide the visualizer window
@@ -53,6 +61,10 @@ public:
         ImGui::Begin("Data Structure Visualizer", &isOpen);
 
         ImGui::Text("Interactive Data Structure Operations Demo");
+        ImGui::Separator();
+
+        // Visualization Control Button
+        renderVisualizationControl(arrayDS, stackDS, opManager);
         ImGui::Separator();
 
         // Tabs for different data structures
@@ -106,8 +118,7 @@ private:
         ImGui::InputInt("Value##insert", &insertValue);
         if (ImGui::Button("Insert Element")) {
             if (insertIndex >= 0 && insertIndex <= (int)arrayDS.data.size()) {
-                auto insertOp = std::make_unique<ArrayInsert>(arrayDS, insertIndex, insertValue);
-                opManager.executeOperation(arrayDS, std::move(insertOp));
+                stageOperation(std::make_unique<ArrayInsert>(arrayDS, insertIndex, insertValue), &arrayDS);
             }
         }
         ImGui::Spacing();
@@ -117,24 +128,21 @@ private:
         ImGui::InputInt("Index##delete", &deleteIndex);
         if (ImGui::Button("Delete Element")) {
             if (deleteIndex >= 0 && deleteIndex < (int)arrayDS.data.size()) {
-                auto deleteOp = std::make_unique<ArrayDelete>(arrayDS, deleteIndex);
-                opManager.executeOperation(arrayDS, std::move(deleteOp));
+                stageOperation(std::make_unique<ArrayDelete>(arrayDS, deleteIndex), &arrayDS);
             }
         }
         ImGui::Spacing();
 
         // Sort Operation
         if (ImGui::Button("Sort Array (Bubble Sort)")) {
-            auto sortOp = std::make_unique<ArraySort>(arrayDS);
-            opManager.executeOperation(arrayDS, std::move(sortOp));
+            stageOperation(std::make_unique<ArraySort>(arrayDS), &arrayDS);
         }
         ImGui::Spacing();
 
         // Reset Operation
         if (ImGui::Button("Reset Array")) {
             std::vector<int> resetValues = {5, 2, 8, 1, 9};
-            auto resetOp = std::make_unique<ArrayInit>(resetValues);
-            opManager.executeOperation(arrayDS, std::move(resetOp));
+            stageOperation(std::make_unique<ArrayInit>(resetValues), &arrayDS);
         }
     }
 
@@ -174,32 +182,86 @@ private:
         ImGui::Text("Push Operation:");
         ImGui::InputInt("Value##push", &pushValue);
         if (ImGui::Button("Push to Stack")) {
-            auto pushOp = std::make_unique<StackPush>(pushValue);
-            opManager.executeOperation(stackDS, std::move(pushOp));
+            stageOperation(std::make_unique<StackPush>(pushValue), &stackDS);
         }
         ImGui::Spacing();
 
         // Pop Operation
         if (ImGui::Button("Pop from Stack")) {
             if (!stackDS.data.empty()) {
-                auto popOp = std::make_unique<StackPop>();
-                opManager.executeOperation(stackDS, std::move(popOp));
+                stageOperation(std::make_unique<StackPop>(), &stackDS);
             }
         }
         ImGui::Spacing();
 
         // Clear Operation
         if (ImGui::Button("Clear Stack")) {
-            auto clearOp = std::make_unique<StackClear>(stackDS);
-            opManager.executeOperation(stackDS, std::move(clearOp));
+            stageOperation(std::make_unique<StackClear>(stackDS), &stackDS);
         }
         ImGui::Spacing();
 
         // Initialize Stack
         if (ImGui::Button("Initialize Stack [1,2,3,4,5]")) {
             std::vector<int> values = {1, 2, 3, 4, 5};
-            auto initOp = std::make_unique<StackInit>(values);
-            opManager.executeOperation(stackDS, std::move(initOp));
+            stageOperation(std::make_unique<StackInit>(values), &stackDS);
+        }
+    }
+
+    /**
+     * Stage an operation for step-by-step visualization
+     */
+    void stageOperation(std::unique_ptr<UserOperation> op, DataStructure* ds) {
+        stagedOperation = std::move(op);
+        stagedDataStructure = ds;
+        currentAtomicStep = 0;
+        isVisualizing = false;
+    }
+
+    /**
+     * Render the visualization control button (Start/Step)
+     */
+    void renderVisualizationControl(ArrayStructure& arrayDS, StackStructure& stackDS, OperationManager& opManager) {
+        if (!stagedOperation) {
+            ImGui::TextColored(ImVec4(0.5f, 0.5f, 0.5f, 1.0f), "No operation staged. Click an operation button to stage it.");
+            return;
+        }
+
+        // Show staged operation info
+        ImGui::TextColored(ImVec4(0.2f, 0.6f, 1.0f, 1.0f), "Staged Operation: %s", stagedOperation->getName().c_str());
+        ImGui::Text("Total atomic operations: %zu", stagedOperation->operations.size());
+
+        if (isVisualizing) {
+            ImGui::Text("Current step: %zu / %zu", currentAtomicStep, stagedOperation->operations.size());
+        }
+        ImGui::Spacing();
+
+        // Start or Step button
+        if (!isVisualizing) {
+            if (ImGui::Button("Start Visualization")) {
+                isVisualizing = true;
+            }
+            ImGui::SameLine();
+            if (ImGui::Button("Cancel")) {
+                stagedOperation.reset();
+                stagedDataStructure = nullptr;
+            }
+        } else {
+            if (currentAtomicStep < stagedOperation->operations.size()) {
+                if (ImGui::Button("Step (Execute Next Atomic Operation)")) {
+                    // Execute the current atomic operation
+                    stagedOperation->operations[currentAtomicStep]->execute(*stagedDataStructure);
+                    currentAtomicStep++;
+
+                    // If we've finished all steps, add to history
+                    if (currentAtomicStep >= stagedOperation->operations.size()) {
+                        opManager.executeOperation(*stagedDataStructure, std::move(stagedOperation));
+                        stagedOperation.reset();
+                        stagedDataStructure = nullptr;
+                        isVisualizing = false;
+                        currentAtomicStep = 0;
+                    }
+                }
+            }
         }
     }
 };
