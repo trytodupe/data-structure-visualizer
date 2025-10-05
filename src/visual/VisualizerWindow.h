@@ -23,6 +23,10 @@ private:
     int deleteIndex;
     int pushValue;
 
+    // Dropdown selection state
+    int selectedArrayOp;
+    int selectedStackOp;
+
     // Visualization state
     std::unique_ptr<UserOperation> stagedOperation;
     DataStructure* stagedDataStructure;
@@ -34,6 +38,7 @@ public:
         : isOpen(true), windowScale(scale),
           insertIndex(0), insertValue(99),
           deleteIndex(0), pushValue(10),
+          selectedArrayOp(0), selectedStackOp(0),
           stagedOperation(nullptr), stagedDataStructure(nullptr),
           currentAtomicStep(0), isVisualizing(false) {}
 
@@ -144,37 +149,43 @@ private:
         ImGui::Separator();
         ImGui::Spacing();
 
-        // Insert Operation
-        ImGui::Text("Insert Operation:");
-        ImGui::InputInt("Index##insert", &insertIndex);
-        ImGui::InputInt("Value##insert", &insertValue);
-        if (ImGui::Button("Insert Element")) {
-            if (insertIndex >= 0 && insertIndex <= (int)arrayDS.data.size()) {
-                stageOperation(std::make_unique<ArrayInsert>(arrayDS, insertIndex, insertValue), &arrayDS);
+        // Operation selection dropdown
+        ImGui::Text("Select Array Operation:");
+        const char* arrayOps[] = { "Insert", "Delete", "Sort", "Reset" };
+        ImGui::Combo("##arrayOperation", &selectedArrayOp, arrayOps, IM_ARRAYSIZE(arrayOps));
+        ImGui::Spacing();
+
+        // Show inputs based on selected operation
+        if (selectedArrayOp == 0) { // Insert
+            ImGui::Text("Insert Operation:");
+            ImGui::InputInt("Index##insert", &insertIndex);
+            ImGui::InputInt("Value##insert", &insertValue);
+            if (ImGui::Button("Execute Insert")) {
+                if (insertIndex >= 0 && insertIndex <= (int)arrayDS.data.size()) {
+                    stageOperation(std::make_unique<ArrayInsert>(arrayDS, insertIndex, insertValue), &arrayDS);
+                }
             }
-        }
-        ImGui::Spacing();
-
-        // Delete Operation
-        ImGui::Text("Delete Operation:");
-        ImGui::InputInt("Index##delete", &deleteIndex);
-        if (ImGui::Button("Delete Element")) {
-            if (deleteIndex >= 0 && deleteIndex < (int)arrayDS.data.size()) {
-                stageOperation(std::make_unique<ArrayDelete>(arrayDS, deleteIndex), &arrayDS);
+        } else if (selectedArrayOp == 1) { // Delete
+            ImGui::Text("Delete Operation:");
+            ImGui::InputInt("Index##delete", &deleteIndex);
+            if (ImGui::Button("Execute Delete")) {
+                if (deleteIndex >= 0 && deleteIndex < (int)arrayDS.data.size()) {
+                    stageOperation(std::make_unique<ArrayDelete>(arrayDS, deleteIndex), &arrayDS);
+                }
             }
-        }
-        ImGui::Spacing();
-
-        // Sort Operation
-        if (ImGui::Button("Sort Array (Bubble Sort)")) {
-            stageOperation(std::make_unique<ArraySort>(arrayDS), &arrayDS);
-        }
-        ImGui::Spacing();
-
-        // Reset Operation
-        if (ImGui::Button("Reset Array")) {
-            std::vector<int> resetValues = {5, 2, 8, 1, 9};
-            stageOperation(std::make_unique<ArrayInit>(resetValues), &arrayDS);
+        } else if (selectedArrayOp == 2) { // Sort
+            ImGui::Text("Sort Operation:");
+            ImGui::Text("Sorts the array using Bubble Sort algorithm.");
+            if (ImGui::Button("Execute Sort")) {
+                stageOperation(std::make_unique<ArraySort>(arrayDS), &arrayDS);
+            }
+        } else if (selectedArrayOp == 3) { // Reset
+            ImGui::Text("Reset Operation:");
+            ImGui::Text("Resets array to [5, 2, 8, 1, 9].");
+            if (ImGui::Button("Execute Reset")) {
+                std::vector<int> resetValues = {5, 2, 8, 1, 9};
+                stageOperation(std::make_unique<ArrayInit>(resetValues), &arrayDS);
+            }
         }
     }
 
@@ -256,32 +267,40 @@ private:
         ImGui::Separator();
         ImGui::Spacing();
 
-        // Push Operation
-        ImGui::Text("Push Operation:");
-        ImGui::InputInt("Value##push", &pushValue);
-        if (ImGui::Button("Push to Stack")) {
-            stageOperation(std::make_unique<StackPush>(pushValue), &stackDS);
-        }
+        // Operation selection dropdown
+        ImGui::Text("Select Stack Operation:");
+        const char* stackOps[] = { "Push", "Pop", "Clear", "Initialize" };
+        ImGui::Combo("##stackOperation", &selectedStackOp, stackOps, IM_ARRAYSIZE(stackOps));
         ImGui::Spacing();
 
-        // Pop Operation
-        if (ImGui::Button("Pop from Stack")) {
-            if (!stackDS.data.empty()) {
-                stageOperation(std::make_unique<StackPop>(), &stackDS);
+        // Show inputs based on selected operation
+        if (selectedStackOp == 0) { // Push
+            ImGui::Text("Push Operation:");
+            ImGui::InputInt("Value##push", &pushValue);
+            if (ImGui::Button("Execute Push")) {
+                stageOperation(std::make_unique<StackPush>(pushValue), &stackDS);
             }
-        }
-        ImGui::Spacing();
-
-        // Clear Operation
-        if (ImGui::Button("Clear Stack")) {
-            stageOperation(std::make_unique<StackClear>(stackDS), &stackDS);
-        }
-        ImGui::Spacing();
-
-        // Initialize Stack
-        if (ImGui::Button("Initialize Stack [1,2,3,4,5]")) {
-            std::vector<int> values = {1, 2, 3, 4, 5};
-            stageOperation(std::make_unique<StackInit>(values), &stackDS);
+        } else if (selectedStackOp == 1) { // Pop
+            ImGui::Text("Pop Operation:");
+            ImGui::Text("Removes the top element from the stack.");
+            if (ImGui::Button("Execute Pop")) {
+                if (!stackDS.data.empty()) {
+                    stageOperation(std::make_unique<StackPop>(), &stackDS);
+                }
+            }
+        } else if (selectedStackOp == 2) { // Clear
+            ImGui::Text("Clear Operation:");
+            ImGui::Text("Removes all elements from the stack.");
+            if (ImGui::Button("Execute Clear")) {
+                stageOperation(std::make_unique<StackClear>(stackDS), &stackDS);
+            }
+        } else if (selectedStackOp == 3) { // Initialize
+            ImGui::Text("Initialize Operation:");
+            ImGui::Text("Initializes stack with [1, 2, 3, 4, 5].");
+            if (ImGui::Button("Execute Initialize")) {
+                std::vector<int> values = {1, 2, 3, 4, 5};
+                stageOperation(std::make_unique<StackInit>(values), &stackDS);
+            }
         }
     }
 
