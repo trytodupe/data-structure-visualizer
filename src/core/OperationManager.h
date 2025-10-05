@@ -11,16 +11,17 @@
  * Stores executed user operations and maintains undo/redo stacks.
  */
 class OperationManager {
-private:
+public:
     // Pair of operation and the data structure it was executed on
     struct OperationRecord {
         std::unique_ptr<UserOperation> operation;
         DataStructure* dataStructure;
     };
 
+private:
     std::vector<std::unique_ptr<UserOperation>> executedOperations;
-    std::stack<OperationRecord> undoStack;
-    std::stack<OperationRecord> redoStack;
+    std::vector<OperationRecord> undoStack;  // Use vector instead of stack for iteration
+    std::vector<OperationRecord> redoStack;  // Use vector instead of stack for iteration
 
 public:
     OperationManager() {}
@@ -37,15 +38,13 @@ public:
         userOp->execute(ds);
 
         // Clear redo stack when a new operation is executed
-        while (!redoStack.empty()) {
-            redoStack.pop();
-        }
+        redoStack.clear();
 
         // Add to undo stack (clone the user operation and store data structure pointer)
         OperationRecord record;
         record.operation = userOp->clone();
         record.dataStructure = &ds;
-        undoStack.push(std::move(record));
+        undoStack.push_back(std::move(record));
 
         // Add to history
         executedOperations.push_back(std::move(userOp));
@@ -60,13 +59,13 @@ public:
             return false;
         }
 
-        auto record = std::move(undoStack.top());
-        undoStack.pop();
+        auto record = std::move(undoStack.back());
+        undoStack.pop_back();
 
         // Use the stored data structure pointer
         record.operation->undo(*record.dataStructure);
 
-        redoStack.push(std::move(record));
+        redoStack.push_back(std::move(record));
 
         return true;
     }
@@ -80,13 +79,13 @@ public:
             return false;
         }
 
-        auto record = std::move(redoStack.top());
-        redoStack.pop();
+        auto record = std::move(redoStack.back());
+        redoStack.pop_back();
 
         // Use the stored data structure pointer
         record.operation->execute(*record.dataStructure);
 
-        undoStack.push(std::move(record));
+        undoStack.push_back(std::move(record));
 
         return true;
     }
@@ -128,8 +127,8 @@ public:
      */
     void clear() {
         executedOperations.clear();
-        while (!undoStack.empty()) undoStack.pop();
-        while (!redoStack.empty()) redoStack.pop();
+        undoStack.clear();
+        redoStack.clear();
     }
 
     /**
@@ -157,48 +156,19 @@ public:
     }
 
     /**
-     * Iterate through undo stack and call function for each operation
-     * @param func Function to call with (index, operation) - index 0 is most recent
+     * Get const reference to undo stack
+     * @return const reference to undo stack vector
      */
-    template<typename Func>
-    void forEachUndoOperation(Func func) const {
-        // Access the underlying deque container of std::stack
-        // This is implementation-dependent but works with libstdc++
-        struct StackAccessor : public std::stack<OperationRecord> {
-            static const auto& getContainer(const std::stack<OperationRecord>& s) {
-                return s.*(&StackAccessor::c);
-            }
-        };
-
-        const auto& container = StackAccessor::getContainer(undoStack);
-
-        // Iterate from end to beginning (most recent first)
-        size_t index = 0;
-        for (auto it = container.rbegin(); it != container.rend(); ++it, ++index) {
-            func(index, it->operation.get());
-        }
+    const std::vector<OperationRecord>& getUndoStack() const {
+        return undoStack;
     }
 
     /**
-     * Iterate through redo stack and call function for each operation
-     * @param func Function to call with (index, operation) - index 0 is most recent
+     * Get const reference to redo stack
+     * @return const reference to redo stack vector
      */
-    template<typename Func>
-    void forEachRedoOperation(Func func) const {
-        // Access the underlying deque container of std::stack
-        struct StackAccessor : public std::stack<OperationRecord> {
-            static const auto& getContainer(const std::stack<OperationRecord>& s) {
-                return s.*(&StackAccessor::c);
-            }
-        };
-
-        const auto& container = StackAccessor::getContainer(redoStack);
-
-        // Iterate from end to beginning (most recent first)
-        size_t index = 0;
-        for (auto it = container.rbegin(); it != container.rend(); ++it, ++index) {
-            func(index, it->operation.get());
-        }
+    const std::vector<OperationRecord>& getRedoStack() const {
+        return redoStack;
     }
 
     /**

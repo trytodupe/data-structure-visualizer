@@ -69,36 +69,38 @@ public:
         // Display Undo Stack (green color)
         if (undoSize > 0) {
             ImGui::TextColored(ImVec4(0.4f, 0.9f, 0.4f, 1.0f), "=== Undo Stack (most recent on top) ===");
-            opManager.forEachUndoOperation([undoSize](size_t index, const UserOperation* op) {
-                if (op) {
-                    ImGui::PushID((int)index);
-                    ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.6f, 1.0f, 0.6f, 1.0f));
-                    ImGui::Text("  [%zu] %s - %s",
-                               undoSize - index,
-                               op->getName().c_str(),
-                               op->getDescription().c_str());
-                    ImGui::PopStyleColor();
-                    ImGui::PopID();
-                }
-            });
+            const auto& undoStack = opManager.getUndoStack();
+            // Iterate from end to beginning (most recent first)
+            for (int i = undoStack.size() - 1; i >= 0; --i) {
+                const auto& record = undoStack[i];
+                ImGui::PushID(i);
+                ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.6f, 1.0f, 0.6f, 1.0f));
+                ImGui::Text("  [%d] %s - %s",
+                           i + 1,
+                           record.operation->getName().c_str(),
+                           record.operation->getDescription().c_str());
+                ImGui::PopStyleColor();
+                ImGui::PopID();
+            }
             ImGui::Spacing();
         }
 
         // Display Redo Stack (yellow/orange color)
         if (redoSize > 0) {
             ImGui::TextColored(ImVec4(1.0f, 0.8f, 0.3f, 1.0f), "=== Redo Stack (most recent on top) ===");
-            opManager.forEachRedoOperation([redoSize](size_t index, const UserOperation* op) {
-                if (op) {
-                    ImGui::PushID((int)(index + 1000)); // Offset ID to avoid collision
-                    ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1.0f, 0.9f, 0.5f, 1.0f));
-                    ImGui::Text("  [%zu] %s - %s",
-                               redoSize - index,
-                               op->getName().c_str(),
-                               op->getDescription().c_str());
-                    ImGui::PopStyleColor();
-                    ImGui::PopID();
-                }
-            });
+            const auto& redoStack = opManager.getRedoStack();
+            // Iterate from end to beginning (most recent first)
+            for (int i = redoStack.size() - 1; i >= 0; --i) {
+                const auto& record = redoStack[i];
+                ImGui::PushID(i + 1000); // Offset ID to avoid collision
+                ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1.0f, 0.9f, 0.5f, 1.0f));
+                ImGui::Text("  [%d] %s - %s",
+                           i + 1,
+                           record.operation->getName().c_str(),
+                           record.operation->getDescription().c_str());
+                ImGui::PopStyleColor();
+                ImGui::PopID();
+            }
         }
 
         if (undoSize == 0 && redoSize == 0) {
