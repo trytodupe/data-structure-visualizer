@@ -8,6 +8,7 @@
 #include <memory>
 #include <string>
 #include <stack>
+#include <set>
 
 /**
  * Main visualizer window for data structure operations
@@ -133,19 +134,62 @@ private:
             }
         }
 
+        // Get indices being modified in current atomic operation (during visualization)
+        std::set<size_t> modifiedIndices;
+        if (isVisualizing && stagedOperation && currentAtomicStep > 0 && currentAtomicStep <= stagedOperation->operations.size()) {
+            // Get the last executed atomic operation
+            Operation* currentOp = stagedOperation->operations[currentAtomicStep - 1].get();
+
+            // Try to cast to WriteOp to get the modified index
+            if (auto* writeOp = dynamic_cast<WriteOp*>(currentOp)) {
+                // Extract index from WriteOp description
+                std::string desc = writeOp->getDescription();
+                size_t indexPos = desc.find("index ");
+                if (indexPos != std::string::npos) {
+                    size_t idx = std::stoul(desc.substr(indexPos + 6));
+                    modifiedIndices.insert(idx);
+                }
+            }
+            // Try to cast to MoveOp to get both indices
+            else if (auto* moveOp = dynamic_cast<MoveOp*>(currentOp)) {
+                std::string desc = moveOp->getDescription();
+                size_t fromPos = desc.find("from ");
+                size_t toPos = desc.find("to ");
+                if (fromPos != std::string::npos && toPos != std::string::npos) {
+                    size_t fromIdx = std::stoul(desc.substr(fromPos + 5));
+                    size_t toIdx = std::stoul(desc.substr(toPos + 3));
+                    modifiedIndices.insert(fromIdx);
+                    modifiedIndices.insert(toIdx);
+                }
+            }
+        }
+
         for (size_t i = 0; i < arrayDS.data.size(); ++i) {
             ImVec2 box_min = ImVec2(canvas_pos.x + i * (box_size + spacing), canvas_pos.y);
             ImVec2 box_max = ImVec2(box_min.x + box_size, box_min.y + box_size);
 
-            // Highlight box if it's the selected index
+            // Highlight box if it's the selected index (before visualization)
             bool isSelected = (showArrow && arrowIndex == (int)i);
-            ImU32 boxColor = isSelected ?
-                (selectedArrayOp == 0 ? IM_COL32(50, 200, 120, 255) : IM_COL32(200, 80, 80, 255)) :
-                IM_COL32(70, 130, 180, 255);
+
+            // Highlight box if it's being modified in current atomic operation (during visualization)
+            bool isBeingModified = (modifiedIndices.find(i) != modifiedIndices.end());
+
+            ImU32 boxColor;
+            if (isBeingModified) {
+                // Bright yellow/orange for currently modified elements during visualization
+                boxColor = IM_COL32(255, 180, 0, 255);
+            } else if (isSelected) {
+                // Green/red for selected operation target (before visualization)
+                boxColor = (selectedArrayOp == 0 ? IM_COL32(50, 200, 120, 255) : IM_COL32(200, 80, 80, 255));
+            } else {
+                // Default blue
+                boxColor = IM_COL32(70, 130, 180, 255);
+            }
 
             // Draw box
             draw_list->AddRectFilled(box_min, box_max, boxColor);
-            draw_list->AddRect(box_min, box_max, IM_COL32(255, 255, 255, 255), 0.0f, 0, isSelected ? 3.0f : 2.0f);
+            float borderThickness = isBeingModified ? 4.0f : (isSelected ? 3.0f : 2.0f);
+            draw_list->AddRect(box_min, box_max, IM_COL32(255, 255, 255, 255), 0.0f, 0, borderThickness);
 
             // Draw value text centered
             char value_text[32];
@@ -165,7 +209,14 @@ private:
                 box_min.x + (box_size - index_size.x) * 0.5f,
                 box_max.y + 5.0f
             );
-            ImU32 indexColor = isSelected ? arrowColor : IM_COL32(200, 200, 200, 255);
+            ImU32 indexColor;
+            if (isBeingModified) {
+                indexColor = IM_COL32(255, 180, 0, 255); // Orange for modified
+            } else if (isSelected) {
+                indexColor = arrowColor;
+            } else {
+                indexColor = IM_COL32(200, 200, 200, 255);
+            }
             draw_list->AddText(index_pos, indexColor, index_text);
         }
 
@@ -286,6 +337,17 @@ private:
         float box_height = 40.0f;
         float spacing = 5.0f;
 
+        // Check if top element is being modified (for Push/Pop operations during visualization)
+        bool topBeingModified = false;
+        if (isVisualizing && stagedOperation && currentAtomicStep > 0 && currentAtomicStep <= stagedOperation->operations.size()) {
+            Operation* currentOp = stagedOperation->operations[currentAtomicStep - 1].get();
+
+            // Check if it's a PushOp or PopOp
+            if (dynamic_cast<PushOp*>(currentOp) || dynamic_cast<PopOp*>(currentOp)) {
+                topBeingModified = true;
+            }
+        }
+
         if (stackElements.empty()) {
             // Draw empty stack container
             ImVec2 empty_min = ImVec2(canvas_pos.x, canvas_pos.y);
@@ -306,10 +368,24 @@ private:
                 ImVec2 box_min = ImVec2(canvas_pos.x, canvas_pos.y + i * (box_height + spacing));
                 ImVec2 box_max = ImVec2(box_min.x + box_width, box_min.y + box_height);
 
-                // Different color for top element
-                ImU32 box_color = (i == 0) ? IM_COL32(220, 100, 100, 255) : IM_COL32(100, 180, 100, 255);
+                // Determine box color
+                ImU32 box_color;
+                float borderThickness = 2.0f;
+
+                if (i == 0 && topBeingModified) {
+                    // Bright orange for top element being modified during visualization
+                    box_color = IM_COL32(255, 180, 0, 255);
+                    borderThickness = 4.0f;
+                } else if (i == 0) {
+                    // Red for top element (not being modified)
+                    box_color = IM_COL32(220, 100, 100, 255);
+                } else {
+                    // Green for other elements
+                    box_color = IM_COL32(100, 180, 100, 255);
+                }
+
                 draw_list->AddRectFilled(box_min, box_max, box_color);
-                draw_list->AddRect(box_min, box_max, IM_COL32(255, 255, 255, 255), 0.0f, 0, 2.0f);
+                draw_list->AddRect(box_min, box_max, IM_COL32(255, 255, 255, 255), 0.0f, 0, borderThickness);
 
                 // Draw value text centered
                 char value_text[32];
