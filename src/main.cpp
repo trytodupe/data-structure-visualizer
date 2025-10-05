@@ -25,6 +25,7 @@
 #include "operation/ArrayOps.h"
 #include "operation/StackOps.h"
 #include "visual/GuiVisualizer.h"
+#include "visual/HistoryWindow.h"
 #include <memory>
 
 // [Win32] Our example includes a copy of glfw3.lib pre-compiled with VS2010 to maximize ease of testing and compatibility with old VS compilers.
@@ -153,6 +154,7 @@ int main(int, char**)
     StackStructure stackDS;
     OperationManager opManager;
     GuiVisualizer visualizer;
+    HistoryWindow historyWindow(main_scale);
 
     // Demo controls
     static int insertIndex = 0;
@@ -377,33 +379,12 @@ int main(int, char**)
             ImGui::Separator();
             ImGui::Spacing();
 
-            // Undo/Redo controls
-            ImGui::Text("History Controls:");
-            if (ImGui::Button("Undo")) {
-                opManager.undo();
+            // Toggle windows
+            bool historyOpen = historyWindow.getOpen();
+            if (ImGui::Checkbox("Show History Window", &historyOpen)) {
+                historyWindow.setOpen(historyOpen);
             }
             ImGui::SameLine();
-            if (ImGui::Button("Redo")) {
-                opManager.redo();
-            }
-            ImGui::SameLine();
-            ImGui::Text("| Operations in history: %zu", opManager.getExecutedOperations().size());
-
-            ImGui::Spacing();
-            ImGui::Separator();
-
-            // Display operation history
-            ImGui::Text("Operation History:");
-            ImGui::BeginChild("HistoryList", ImVec2(0, 150 * main_scale), true);
-            const auto& history = opManager.getExecutedOperations();
-            for (size_t i = 0; i < history.size(); ++i) {
-                ImGui::Text("%zu: %s - %s", i + 1,
-                           history[i]->getName().c_str(),
-                           history[i]->getDescription().c_str());
-            }
-            ImGui::EndChild();
-
-            ImGui::Spacing();
             ImGui::Checkbox("Show ImGui Demo", &show_demo_window);
 
             if (ImGui::Button("Quit Application"))
@@ -414,6 +395,9 @@ int main(int, char**)
 
             ImGui::End();
         }
+
+        // Render history window
+        historyWindow.render(opManager);
 
         // Rendering
         ImGui::Render();
