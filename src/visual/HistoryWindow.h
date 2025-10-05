@@ -35,13 +35,14 @@ public:
         ImGui::SetNextWindowSize(ImVec2(400 * windowScale, 300 * windowScale), ImGuiCond_FirstUseEver);
         ImGui::Begin("Operation History", &isOpen);
 
-        ImGui::Text("All executed operations:");
+        ImGui::Text("Operation Stacks:");
         ImGui::Separator();
         ImGui::Spacing();
 
-        // Display operation count
-        const auto& history = opManager.getExecutedOperations();
-        ImGui::Text("Total operations: %zu", history.size());
+        // Display stack sizes
+        size_t undoSize = opManager.getUndoStackSize();
+        size_t redoSize = opManager.getRedoStackSize();
+        ImGui::Text("Undo stack: %zu | Redo stack: %zu", undoSize, redoSize);
 
         ImGui::Spacing();
 
@@ -62,28 +63,45 @@ public:
         ImGui::Separator();
         ImGui::Spacing();
 
-        // Scrollable history list
+        // Scrollable history list showing both stacks
         ImGui::BeginChild("HistoryList", ImVec2(0, 0), true);
-        for (size_t i = 0; i < history.size(); ++i) {
-            ImGui::PushID(i);
 
-            // Highlight with alternating colors
-            if (i % 2 == 0) {
-                ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.9f, 0.9f, 0.9f, 1.0f));
-            } else {
-                ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.7f, 0.7f, 0.7f, 1.0f));
-            }
-
-            ImGui::Text("%zu: %s - %s",
-                       i + 1,
-                       history[i]->getName().c_str(),
-                       history[i]->getDescription().c_str());
-
-            ImGui::PopStyleColor();
-            ImGui::PopID();
+        // Display Undo Stack (green color)
+        if (undoSize > 0) {
+            ImGui::TextColored(ImVec4(0.4f, 0.9f, 0.4f, 1.0f), "=== Undo Stack (most recent on top) ===");
+            opManager.forEachUndoOperation([undoSize](size_t index, const UserOperation* op) {
+                if (op) {
+                    ImGui::PushID((int)index);
+                    ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.6f, 1.0f, 0.6f, 1.0f));
+                    ImGui::Text("  [%zu] %s - %s",
+                               undoSize - index,
+                               op->getName().c_str(),
+                               op->getDescription().c_str());
+                    ImGui::PopStyleColor();
+                    ImGui::PopID();
+                }
+            });
+            ImGui::Spacing();
         }
 
-        if (history.empty()) {
+        // Display Redo Stack (yellow/orange color)
+        if (redoSize > 0) {
+            ImGui::TextColored(ImVec4(1.0f, 0.8f, 0.3f, 1.0f), "=== Redo Stack (most recent on top) ===");
+            opManager.forEachRedoOperation([redoSize](size_t index, const UserOperation* op) {
+                if (op) {
+                    ImGui::PushID((int)(index + 1000)); // Offset ID to avoid collision
+                    ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1.0f, 0.9f, 0.5f, 1.0f));
+                    ImGui::Text("  [%zu] %s - %s",
+                               redoSize - index,
+                               op->getName().c_str(),
+                               op->getDescription().c_str());
+                    ImGui::PopStyleColor();
+                    ImGui::PopID();
+                }
+            });
+        }
+
+        if (undoSize == 0 && redoSize == 0) {
             ImGui::TextColored(ImVec4(0.5f, 0.5f, 0.5f, 1.0f), "No operations yet...");
         }
 

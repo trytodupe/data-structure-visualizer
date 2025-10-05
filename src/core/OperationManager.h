@@ -141,6 +141,67 @@ public:
     }
 
     /**
+     * Get the size of undo stack
+     * @return Number of operations in undo stack
+     */
+    size_t getUndoStackSize() const {
+        return undoStack.size();
+    }
+
+    /**
+     * Get the size of redo stack
+     * @return Number of operations in redo stack
+     */
+    size_t getRedoStackSize() const {
+        return redoStack.size();
+    }
+
+    /**
+     * Iterate through undo stack and call function for each operation
+     * @param func Function to call with (index, operation) - index 0 is most recent
+     */
+    template<typename Func>
+    void forEachUndoOperation(Func func) const {
+        // Access the underlying deque container of std::stack
+        // This is implementation-dependent but works with libstdc++
+        struct StackAccessor : public std::stack<OperationRecord> {
+            static const auto& getContainer(const std::stack<OperationRecord>& s) {
+                return s.*(&StackAccessor::c);
+            }
+        };
+
+        const auto& container = StackAccessor::getContainer(undoStack);
+
+        // Iterate from end to beginning (most recent first)
+        size_t index = 0;
+        for (auto it = container.rbegin(); it != container.rend(); ++it, ++index) {
+            func(index, it->operation.get());
+        }
+    }
+
+    /**
+     * Iterate through redo stack and call function for each operation
+     * @param func Function to call with (index, operation) - index 0 is most recent
+     */
+    template<typename Func>
+    void forEachRedoOperation(Func func) const {
+        // Access the underlying deque container of std::stack
+        struct StackAccessor : public std::stack<OperationRecord> {
+            static const auto& getContainer(const std::stack<OperationRecord>& s) {
+                return s.*(&StackAccessor::c);
+            }
+        };
+
+        const auto& container = StackAccessor::getContainer(redoStack);
+
+        // Iterate from end to beginning (most recent first)
+        size_t index = 0;
+        for (auto it = container.rbegin(); it != container.rend(); ++it, ++index) {
+            func(index, it->operation.get());
+        }
+    }
+
+    /**
      * Serialize all operations to JSON
      * @return JSON array of all operations
      */
