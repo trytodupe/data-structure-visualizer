@@ -114,13 +114,38 @@ private:
         float box_size = 60.0f;
         float spacing = 5.0f;
 
+        // Determine if arrow should be shown (only when not in visualization phase)
+        bool showArrow = false;
+        int arrowIndex = -1;
+        ImU32 arrowColor = IM_COL32(255, 200, 0, 255); // Orange/yellow color
+
+        if (!isVisualizing) {
+            if (selectedArrayOp == 0 && insertIndex >= 0 && insertIndex <= (int)arrayDS.data.size()) {
+                // Insert operation - show arrow at insert position
+                showArrow = true;
+                arrowIndex = insertIndex;
+                arrowColor = IM_COL32(0, 255, 100, 255); // Green for insert
+            } else if (selectedArrayOp == 1 && deleteIndex >= 0 && deleteIndex < (int)arrayDS.data.size()) {
+                // Delete operation - show arrow at delete position
+                showArrow = true;
+                arrowIndex = deleteIndex;
+                arrowColor = IM_COL32(255, 100, 100, 255); // Red for delete
+            }
+        }
+
         for (size_t i = 0; i < arrayDS.data.size(); ++i) {
             ImVec2 box_min = ImVec2(canvas_pos.x + i * (box_size + spacing), canvas_pos.y);
             ImVec2 box_max = ImVec2(box_min.x + box_size, box_min.y + box_size);
 
+            // Highlight box if it's the selected index
+            bool isSelected = (showArrow && arrowIndex == (int)i);
+            ImU32 boxColor = isSelected ?
+                (selectedArrayOp == 0 ? IM_COL32(50, 200, 120, 255) : IM_COL32(200, 80, 80, 255)) :
+                IM_COL32(70, 130, 180, 255);
+
             // Draw box
-            draw_list->AddRectFilled(box_min, box_max, IM_COL32(70, 130, 180, 255));
-            draw_list->AddRect(box_min, box_max, IM_COL32(255, 255, 255, 255), 0.0f, 0, 2.0f);
+            draw_list->AddRectFilled(box_min, box_max, boxColor);
+            draw_list->AddRect(box_min, box_max, IM_COL32(255, 255, 255, 255), 0.0f, 0, isSelected ? 3.0f : 2.0f);
 
             // Draw value text centered
             char value_text[32];
@@ -140,11 +165,56 @@ private:
                 box_min.x + (box_size - index_size.x) * 0.5f,
                 box_max.y + 5.0f
             );
-            draw_list->AddText(index_pos, IM_COL32(200, 200, 200, 255), index_text);
+            ImU32 indexColor = isSelected ? arrowColor : IM_COL32(200, 200, 200, 255);
+            draw_list->AddText(index_pos, indexColor, index_text);
         }
 
-        // Reserve space for the visual representation
-        ImGui::Dummy(ImVec2(arrayDS.data.size() * (box_size + spacing), box_size + 30.0f));
+        // Draw arrow below selected index for Insert/Delete operations (after boxes)
+        if (showArrow && arrowIndex >= 0) {
+            // Calculate arrow position below the boxes
+            float arrow_x = canvas_pos.x + arrowIndex * (box_size + spacing) + box_size * 0.5f;
+            float arrow_base_y = canvas_pos.y + box_size + 30.0f; // Below index labels
+
+            // Draw arrow pointing up
+            ImVec2 arrow_tip = ImVec2(arrow_x, canvas_pos.y + box_size + 25.0f);
+            ImVec2 arrow_left = ImVec2(arrow_x - 8.0f, arrow_base_y);
+            ImVec2 arrow_right = ImVec2(arrow_x + 8.0f, arrow_base_y);
+            ImVec2 arrow_shaft_bottom = ImVec2(arrow_x, arrow_base_y + 15.0f);
+
+            // Draw arrow shaft (vertical line)
+            draw_list->AddLine(arrow_shaft_bottom, ImVec2(arrow_x, arrow_base_y), arrowColor, 3.0f);
+            // Draw arrow head (triangle pointing up)
+            draw_list->AddTriangleFilled(arrow_tip, arrow_left, arrow_right, arrowColor);
+
+            // Draw label below arrow
+            const char* label = (selectedArrayOp == 0) ? "Insert here" : "Delete this";
+            ImVec2 label_size = ImGui::CalcTextSize(label);
+            ImVec2 label_pos = ImVec2(arrow_x - label_size.x * 0.5f, arrow_shaft_bottom.y + 5.0f);
+            draw_list->AddText(label_pos, arrowColor, label);
+        }
+
+        // Draw insertion position indicator for Insert at end
+        if (showArrow && selectedArrayOp == 0 && insertIndex == (int)arrayDS.data.size()) {
+            // Show arrow after last element
+            float arrow_x = canvas_pos.x + arrayDS.data.size() * (box_size + spacing) + box_size * 0.5f;
+            float arrow_base_y = canvas_pos.y + box_size + 30.0f;
+
+            ImVec2 arrow_tip = ImVec2(arrow_x, canvas_pos.y + box_size + 25.0f);
+            ImVec2 arrow_left = ImVec2(arrow_x - 8.0f, arrow_base_y);
+            ImVec2 arrow_right = ImVec2(arrow_x + 8.0f, arrow_base_y);
+            ImVec2 arrow_shaft_bottom = ImVec2(arrow_x, arrow_base_y + 15.0f);
+
+            draw_list->AddLine(arrow_shaft_bottom, ImVec2(arrow_x, arrow_base_y), IM_COL32(0, 255, 100, 255), 3.0f);
+            draw_list->AddTriangleFilled(arrow_tip, arrow_left, arrow_right, IM_COL32(0, 255, 100, 255));
+
+            const char* label = "Insert here";
+            ImVec2 label_size = ImGui::CalcTextSize(label);
+            ImVec2 label_pos = ImVec2(arrow_x - label_size.x * 0.5f, arrow_shaft_bottom.y + 5.0f);
+            draw_list->AddText(label_pos, IM_COL32(0, 255, 100, 255), label);
+        }
+
+        // Reserve space for the visual representation (increased for arrow below)
+        ImGui::Dummy(ImVec2((arrayDS.data.size() + 1) * (box_size + spacing), box_size + 80.0f));
         ImGui::Spacing();
         ImGui::Separator();
         ImGui::Spacing();
