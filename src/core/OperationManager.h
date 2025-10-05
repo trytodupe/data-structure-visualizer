@@ -30,12 +30,15 @@ public:
      * Execute a user operation and add it to history
      * @param ds The data structure to execute on
      * @param userOp The user operation to execute
+     * @param alreadyExecuted If true, operation was already executed (e.g., through stepping)
      */
-    void executeOperation(DataStructure& ds, std::unique_ptr<UserOperation> userOp) {
+    void executeOperation(DataStructure& ds, std::unique_ptr<UserOperation> userOp, bool alreadyExecuted = false) {
         if (!userOp) return;
 
-        // Execute the user operation
-        userOp->execute(ds);
+        // Execute the user operation (unless already executed)
+        if (!alreadyExecuted) {
+            userOp->execute(ds);
+        }
 
         // Clear redo stack when a new operation is executed
         redoStack.clear();

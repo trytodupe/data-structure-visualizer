@@ -111,7 +111,8 @@ public:
 
                     // If we've finished all steps, add to history
                     if (currentAtomicStep >= stagedOperation->operations.size()) {
-                        opManager.executeOperation(*stagedDataStructure, std::move(stagedOperation));
+                        // Pass true for alreadyExecuted since we've already executed through stepping
+                        opManager.executeOperation(*stagedDataStructure, std::move(stagedOperation), true);
                         stagedOperation.reset();
                         stagedDataStructure = nullptr;
                         isVisualizing = false;
