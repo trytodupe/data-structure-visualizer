@@ -190,7 +190,7 @@ private:
      */
     void renderOperationControls(ArrayStructure& arrayDS, VisualizationController& controller) {
         ImGui::Text("Select Array Operation:");
-        const char* arrayOps[] = { "Insert", "Delete", "Sort", "Reset" };
+        const char* arrayOps[] = { "Insert", "Delete", "Reset" };
         ImGui::Combo("##arrayOperation", &selectedOperation, arrayOps, IM_ARRAYSIZE(arrayOps));
         ImGui::Spacing();
 
@@ -211,13 +211,7 @@ private:
                     controller.stageOperation(std::make_unique<ArrayDelete>(arrayDS, deleteIndex), &arrayDS);
                 }
             }
-        } else if (selectedOperation == 2) { // Sort
-            ImGui::Text("Sort Operation:");
-            ImGui::Text("Sorts the array using Bubble Sort algorithm.");
-            if (ImGui::Button("Execute Sort")) {
-                controller.stageOperation(std::make_unique<ArraySort>(arrayDS), &arrayDS);
-            }
-        } else if (selectedOperation == 3) { // Reset
+        } else if (selectedOperation == 2) { // Reset
             ImGui::Text("Reset Operation:");
             ImGui::Text("Resets array to [5, 2, 8, 1, 9].");
             if (ImGui::Button("Execute Reset")) {

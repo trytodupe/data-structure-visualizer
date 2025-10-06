@@ -79,34 +79,33 @@ public:
 };
 
 /**
- * Atomic operation: Move/swap elements in array
+ * Atomic operation: Move element from one index to another (copy operation)
  */
 class MoveOp : public Operation {
 private:
     size_t fromIndex;
     size_t toIndex;
-    int fromValue;
-    int toValue;
+    int oldValue;  // Old value at toIndex
 
 public:
     MoveOp(size_t from, size_t to)
-        : fromIndex(from), toIndex(to), fromValue(0), toValue(0) {}
+        : fromIndex(from), toIndex(to), oldValue(0) {}
 
     void execute(DataStructure& ds) override {
         ArrayStructure& arr = dynamic_cast<ArrayStructure&>(ds);
         if (fromIndex < arr.size() && toIndex < arr.size()) {
-            // Capture values before swap
-            fromValue = arr[fromIndex];
-            toValue = arr[toIndex];
-            std::swap(arr[fromIndex], arr[toIndex]);
+            // Capture old value at destination
+            oldValue = arr[toIndex];
+            // Copy from source to destination
+            arr[toIndex] = arr[fromIndex];
         }
     }
 
     void undo(DataStructure& ds) override {
         ArrayStructure& arr = dynamic_cast<ArrayStructure&>(ds);
-        // Swap back
-        if (fromIndex < arr.size() && toIndex < arr.size()) {
-            std::swap(arr[fromIndex], arr[toIndex]);
+        // Restore old value at destination
+        if (toIndex < arr.size()) {
+            arr[toIndex] = oldValue;
         }
     }
 
@@ -134,7 +133,7 @@ public:
     }
 
     std::string getDescription() const override {
-        return "Swap elements at " + std::to_string(fromIndex) + " and " + std::to_string(toIndex);
+        return "Move element from " + std::to_string(fromIndex) + " to " + std::to_string(toIndex);
     }
 
     std::unique_ptr<Operation> clone() const override {
@@ -166,16 +165,19 @@ class ArrayInsert : public UserOperation {
 public:
     ArrayInsert(ArrayStructure& arr, size_t index, int value)
         : UserOperation("ArrayInsert", "Insert element into array") {
-        // Shift elements right - operations will capture old values during execute
-        for (size_t i = arr.size(); i > index; --i) {
-            if (i - 1 < arr.size()) {
-                int val = arr[i - 1];
-                operations.push_back(
-                    std::make_unique<WriteOp>(i, val)
-                );
-            }
+        // Check if we can expand the array
+        if (arr.size() >= arr.capacity()) {
+            return; // Cannot insert, array is full
         }
-        // Insert new value
+
+        // Shift elements right by moving from the end backwards
+        // Start from the last element and move each one position to the right
+        for (int i = (int)arr.size() - 1; i >= (int)index; --i) {
+            // Move element at i to position i+1
+            operations.push_back(std::make_unique<MoveOp>(i, i + 1));
+        }
+
+        // Finally, write the new value at the insertion point
         operations.push_back(std::make_unique<WriteOp>(index, value));
     }
 };
@@ -203,25 +205,4 @@ public:
     }
 };
 
-/**
- * User operation: Sort array (bubble sort for visualization)
- */
-class ArraySort : public UserOperation {
-public:
-    ArraySort(ArrayStructure& arr)
-        : UserOperation("ArraySort", "Sort array using bubble sort") {
-        // Create a copy to determine swaps needed
-        int data[100];
-        size_t n = arr.size();
-        std::copy(arr.begin(), arr.end(), data);
 
-        for (size_t i = 0; i < n - 1; ++i) {
-            for (size_t j = 0; j < n - i - 1; ++j) {
-                if (data[j] > data[j + 1]) {
-                    std::swap(data[j], data[j + 1]);
-                    operations.push_back(std::make_unique<MoveOp>(j, j + 1));
-                }
-            }
-        }
-    }
-};
