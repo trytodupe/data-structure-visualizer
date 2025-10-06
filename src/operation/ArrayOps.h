@@ -4,6 +4,7 @@
 #include "../data_structure/ArrayStructure.h"
 #include "../visual/GuiVisualizer.h"
 #include <memory>
+#include <iostream>
 
 // ============================================================================
 // ATOMIC OPERATIONS
@@ -28,20 +29,20 @@ public:
     void execute(DataStructure& ds) override {
         ArrayStructure& arr = dynamic_cast<ArrayStructure&>(ds);
         // Capture old value before modification
-        oldValue = (index < arr.data.size()) ? arr.data[index] : 0;
+        oldValue = (index < arr.size()) ? arr[index] : 0;
 
-        if (index >= arr.data.size()) {
-            arr.data.resize(index + 1);
+        if (index >= arr.size()) {
+            arr.resize(index + 1);
         }
-        arr.data[index] = newValue;
+        arr[index] = newValue;
     }
 
     void undo(DataStructure& ds) override {
         ArrayStructure& arr = dynamic_cast<ArrayStructure&>(ds);
-        if (index >= arr.data.size()) {
-            arr.data.resize(index + 1);
+        if (index == arr.size() - 1) {
+            arr.resize(index);
         }
-        arr.data[index] = oldValue;
+        arr[index] = oldValue;
     }
 
     void draw(GuiVisualizer& vis) override {
@@ -93,19 +94,19 @@ public:
 
     void execute(DataStructure& ds) override {
         ArrayStructure& arr = dynamic_cast<ArrayStructure&>(ds);
-        if (fromIndex < arr.data.size() && toIndex < arr.data.size()) {
+        if (fromIndex < arr.size() && toIndex < arr.size()) {
             // Capture values before swap
-            fromValue = arr.data[fromIndex];
-            toValue = arr.data[toIndex];
-            std::swap(arr.data[fromIndex], arr.data[toIndex]);
+            fromValue = arr[fromIndex];
+            toValue = arr[toIndex];
+            std::swap(arr[fromIndex], arr[toIndex]);
         }
     }
 
     void undo(DataStructure& ds) override {
         ArrayStructure& arr = dynamic_cast<ArrayStructure&>(ds);
         // Swap back
-        if (fromIndex < arr.data.size() && toIndex < arr.data.size()) {
-            std::swap(arr.data[fromIndex], arr.data[toIndex]);
+        if (fromIndex < arr.size() && toIndex < arr.size()) {
+            std::swap(arr[fromIndex], arr[toIndex]);
         }
     }
 
@@ -166,9 +167,9 @@ public:
     ArrayInsert(ArrayStructure& arr, size_t index, int value)
         : UserOperation("ArrayInsert", "Insert element into array") {
         // Shift elements right - operations will capture old values during execute
-        for (size_t i = arr.data.size(); i > index; --i) {
-            if (i - 1 < arr.data.size()) {
-                int val = arr.data[i - 1];
+        for (size_t i = arr.size(); i > index; --i) {
+            if (i - 1 < arr.size()) {
+                int val = arr[i - 1];
                 operations.push_back(
                     std::make_unique<WriteOp>(i, val)
                 );
@@ -187,16 +188,16 @@ public:
     ArrayDelete(ArrayStructure& arr, size_t index)
         : UserOperation("ArrayDelete", "Delete element from array") {
         // Shift elements left - operations will capture old values during execute
-        for (size_t i = index; i < arr.data.size() - 1; ++i) {
-            int val = arr.data[i + 1];
+        for (size_t i = index; i < arr.size() - 1; ++i) {
+            int val = arr[i + 1];
             operations.push_back(
                 std::make_unique<WriteOp>(i, val)
             );
         }
         // Clear last element
-        if (arr.data.size() > 0) {
+        if (arr.size() > 0) {
             operations.push_back(
-                std::make_unique<WriteOp>(arr.data.size() - 1, 0)
+                std::make_unique<WriteOp>(arr.size() - 1, 0)
             );
         }
     }
@@ -210,8 +211,9 @@ public:
     ArraySort(ArrayStructure& arr)
         : UserOperation("ArraySort", "Sort array using bubble sort") {
         // Create a copy to determine swaps needed
-        std::vector<int> data = arr.data;
-        size_t n = data.size();
+        int data[100];
+        size_t n = arr.size();
+        std::copy(arr.begin(), arr.end(), data);
 
         for (size_t i = 0; i < n - 1; ++i) {
             for (size_t j = 0; j < n - i - 1; ++j) {

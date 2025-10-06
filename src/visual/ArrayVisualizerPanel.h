@@ -33,7 +33,7 @@ public:
 
         // Display current array state visually
         ImGui::TextColored(ImVec4(0.2f, 0.8f, 0.2f, 1.0f), "Current Array:");
-        ImGui::Text("Size: %zu", arrayDS.data.size());
+        ImGui::Text("Size: %zu / %zu", arrayDS.size(), arrayDS.capacity());
         ImGui::Spacing();
 
         // Get modified indices for highlighting
@@ -107,11 +107,11 @@ private:
         ImU32 arrowColor = IM_COL32(255, 200, 0, 255);
 
         if (!controller.isInVisualizationPhase()) {
-            if (selectedOperation == 0 && insertIndex >= 0 && insertIndex <= (int)arrayDS.data.size()) {
+            if (selectedOperation == 0 && insertIndex >= 0 && insertIndex <= (int)arrayDS.size()) {
                 showArrow = true;
                 arrowIndex = insertIndex;
                 arrowColor = IM_COL32(0, 255, 100, 255); // Green for insert
-            } else if (selectedOperation == 1 && deleteIndex >= 0 && deleteIndex < (int)arrayDS.data.size()) {
+            } else if (selectedOperation == 1 && deleteIndex >= 0 && deleteIndex < (int)arrayDS.size()) {
                 showArrow = true;
                 arrowIndex = deleteIndex;
                 arrowColor = IM_COL32(255, 100, 100, 255); // Red for delete
@@ -119,7 +119,7 @@ private:
         }
 
         // Draw array boxes
-        for (size_t i = 0; i < arrayDS.data.size(); ++i) {
+        for (size_t i = 0; i < arrayDS.size(); ++i) {
             ImVec2 box_min = ImVec2(canvas_pos.x + i * (box_size + spacing), canvas_pos.y);
             ImVec2 box_max = ImVec2(box_min.x + box_size, box_min.y + box_size);
 
@@ -141,7 +141,7 @@ private:
 
             // Draw value text
             char value_text[32];
-            snprintf(value_text, sizeof(value_text), "%d", arrayDS.data[i]);
+            snprintf(value_text, sizeof(value_text), "%d", arrayDS[i]);
             ImVec2 text_size = ImGui::CalcTextSize(value_text);
             ImVec2 text_pos = ImVec2(
                 box_min.x + (box_size - text_size.x) * 0.5f,
@@ -163,7 +163,7 @@ private:
         }
 
         // Draw arrow indicator
-        if (showArrow && arrowIndex >= 0 && arrowIndex <= (int)arrayDS.data.size()) {
+        if (showArrow && arrowIndex >= 0 && arrowIndex <= (int)arrayDS.size()) {
             float arrow_x = canvas_pos.x + arrowIndex * (box_size + spacing) + box_size * 0.5f;
             float arrow_base_y = canvas_pos.y + box_size + 30.0f;
 
@@ -182,7 +182,7 @@ private:
         }
 
         // Reserve space
-        ImGui::Dummy(ImVec2((arrayDS.data.size() + 1) * (box_size + spacing), box_size + 80.0f));
+        ImGui::Dummy(ImVec2((arrayDS.size() + 1) * (box_size + spacing), box_size + 80.0f));
     }
 
     /**
@@ -199,7 +199,7 @@ private:
             ImGui::InputInt("Index##insert", &insertIndex);
             ImGui::InputInt("Value##insert", &insertValue);
             if (ImGui::Button("Execute Insert")) {
-                if (insertIndex >= 0 && insertIndex <= (int)arrayDS.data.size()) {
+                if (insertIndex >= 0 && insertIndex <= (int)arrayDS.size()) {
                     controller.stageOperation(std::make_unique<ArrayInsert>(arrayDS, insertIndex, insertValue), &arrayDS);
                 }
             }
@@ -207,7 +207,7 @@ private:
             ImGui::Text("Delete Operation:");
             ImGui::InputInt("Index##delete", &deleteIndex);
             if (ImGui::Button("Execute Delete")) {
-                if (deleteIndex >= 0 && deleteIndex < (int)arrayDS.data.size()) {
+                if (deleteIndex >= 0 && deleteIndex < (int)arrayDS.size()) {
                     controller.stageOperation(std::make_unique<ArrayDelete>(arrayDS, deleteIndex), &arrayDS);
                 }
             }
