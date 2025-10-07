@@ -37,7 +37,23 @@ public:
 
     void drawOverlay(const DataStructure &ds, ImVec2 startPos, float boxSize, float spacing) const override
     {
-        // No visual overlay needed for resize
+        ImDrawList* drawList = ImGui::GetWindowDrawList();
+
+        // Draw a big rectangle showing the new array size
+        float totalWidth = newSize * boxSize + (newSize - 1) * spacing;
+        float x = startPos.x;
+        float y = startPos.y;
+
+        // Draw orange rectangle encompassing the new size
+        ImVec2 topLeft(x - 5.0f, y - 5.0f);
+        ImVec2 bottomRight(x + totalWidth + 5.0f, y + boxSize + 5.0f);
+        drawList->AddRect(topLeft, bottomRight, IM_COL32(255, 140, 0, 255), 0.0f, 0, 4.0f);
+
+        // Draw text showing the resize operation
+        std::string resizeText = "Resize to " + std::to_string(newSize);
+        ImVec2 textSize = ImGui::CalcTextSize(resizeText.c_str());
+        ImVec2 textPos(x + (totalWidth - textSize.x) * 0.5f, y + boxSize + 15.0f);
+        drawList->AddText(textPos, IM_COL32(255, 140, 0, 255), resizeText.c_str());
     }
 
     nlohmann::json serialize() const override
