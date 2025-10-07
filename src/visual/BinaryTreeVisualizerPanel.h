@@ -24,7 +24,8 @@ public:
     BinaryTreeVisualizerPanel()
         : selectedOperation(0) {
         // Default init values (level-order: root, left child, right child, etc.)
-        strcpy(initValuesInput, "10, 5, 15, 3, 7, 12, 20");
+        // Use 'null' or 'x' for missing nodes
+        strcpy(initValuesInput, "10, 5, 15, 3, null, 12, 20");
     }
 
     /**
@@ -90,40 +91,49 @@ private:
 
         if (selectedOperation == 0) { // Initialize
             ImGui::Text("Initialize Operation:");
-            ImGui::Text("Initialize tree with custom values (comma-separated, level-order)");
-            ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), "Example: 10, 5, 15, 3, 7, 12, 20");
-            ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), "Creates complete binary tree level by level");
+            ImGui::Text("Initialize tree with values (comma-separated, level-order)");
+            ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), "Example: 10, 5, 15, null, 7, 12, x");
+            ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), "Use 'null' or 'x' for missing nodes");
             ImGui::Spacing();
             ImGui::InputText("Values##init", initValuesInput, IM_ARRAYSIZE(initValuesInput));
             ImGui::TextColored(ImVec4(1.0f, 1.0f, 0.0f, 1.0f), "Note: This will clear undo/redo history");
 
             if (ImGui::Button("Execute Initialize")) {
-                // Parse the input string to extract values
-                std::vector<int> values;
+                // Parse the input string to extract values (with null support)
+                std::vector<std::pair<bool, int>> values; // pair<hasValue, value>
                 std::string input(initValuesInput);
                 std::string current = "";
 
-                for (char c : input) {
-                    if (c == ',' || c == ' ') {
-                        if (!current.empty()) {
-                            try {
-                                values.push_back(std::stoi(current));
-                                current = "";
-                            } catch (...) {
-                                // Skip invalid numbers
-                            }
+                auto processToken = [&values](const std::string& token) {
+                    // Check if token is null/x (case-insensitive)
+                    std::string lower = token;
+                    for (char& c : lower) c = std::tolower(c);
+
+                    if (lower == "null" || lower == "x" || lower == "none") {
+                        values.push_back({false, 0}); // null node
+                    } else {
+                        try {
+                            int val = std::stoi(token);
+                            values.push_back({true, val}); // actual value
+                        } catch (...) {
+                            // Skip invalid tokens
                         }
-                    } else if ((c >= '0' && c <= '9') || c == '-') {
+                    }
+                };
+
+                for (char c : input) {
+                    if (c == ',') {
+                        if (!current.empty()) {
+                            processToken(current);
+                            current = "";
+                        }
+                    } else if (c != ' ' && c != '\t') {
                         current += c;
                     }
                 }
                 // Don't forget the last value
                 if (!current.empty()) {
-                    try {
-                        values.push_back(std::stoi(current));
-                    } catch (...) {
-                        // Skip invalid numbers
-                    }
+                    processToken(current);
                 }
 
                 if (!values.empty()) {

@@ -481,39 +481,98 @@ public:
 /**
  * User operation: Initialize binary tree with values
  * Creates nodes and connects them immediately (one at a time) in level-order
+ * Supports non-full trees with null positions
  */
 class BinaryTreeInit : public UserOperation {
 public:
-    BinaryTreeInit(BinaryTreeStructure& tree, const std::vector<int>& values)
+    // Constructor for optional values (supports null nodes)
+    BinaryTreeInit(BinaryTreeStructure& tree, const std::vector<std::pair<bool, int>>& values)
         : UserOperation("BinaryTreeInit", "Initialize binary tree with values") {
         // Clear the tree first (not tracked in operations)
         tree.clear();
 
-        if (values.empty()) return;
+        if (values.empty() || !values[0].first) return; // Root must exist
 
         // Build tree in level-order: create node, connect it, then create next
+        // nodeIds[i] stores the node ID at position i, or -1 if null
         std::vector<int> nodeIds;
 
         // Create and set root
         int rootNodeId = tree.allocateNodeId();
-        operations.push_back(std::make_unique<CreateNodeOp>(values[0], rootNodeId));
+        operations.push_back(std::make_unique<CreateNodeOp>(values[0].second, rootNodeId));
         operations.push_back(std::make_unique<SetRootOp>(rootNodeId));  // Set as root immediately
         nodeIds.push_back(rootNodeId);
 
         // Create remaining nodes and connect them immediately
         for (size_t i = 1; i < values.size(); ++i) {
-            int nodeId = tree.allocateNodeId();
-
-            // Create the node (goes into temp slot)
-            operations.push_back(std::make_unique<CreateNodeOp>(values[i], nodeId));
-
             // Determine parent and which child (left or right)
             size_t parentIdx = (i - 1) / 2;
             bool isLeftChild = (i % 2 == 1);
 
+            // Check if parent exists (not null)
+            if (parentIdx >= nodeIds.size() || nodeIds[parentIdx] == -1) {
+                // Parent doesn't exist, mark this position as null
+                nodeIds.push_back(-1);
+                continue;
+            }
+
+            // Check if this position should be null
+            if (!values[i].first) {
+                nodeIds.push_back(-1); // Mark as null
+                continue;
+            }
+
+            // Create actual node
+            int nodeId = tree.allocateNodeId();
+
+            // Create the node (goes into temp slot)
+            operations.push_back(std::make_unique<CreateNodeOp>(values[i].second, nodeId));
+
             // Connect immediately (removes from temp slot)
             operations.push_back(std::make_unique<ConnectOp>(nodeIds[parentIdx], nodeId, isLeftChild));
 
+            nodeIds.push_back(nodeId);
+        }
+    }
+
+    // Backward compatibility: Constructor for simple int vector (complete tree)
+    BinaryTreeInit(BinaryTreeStructure& tree, const std::vector<int>& values)
+        : UserOperation("BinaryTreeInit", "Initialize binary tree with values") {
+        // Convert to optional format and delegate
+        std::vector<std::pair<bool, int>> optValues;
+        for (int val : values) {
+            optValues.push_back({true, val});
+        }
+
+        // Clear the tree first (not tracked in operations)
+        tree.clear();
+
+        if (optValues.empty()) return;
+
+        // Build tree (same logic as above)
+        std::vector<int> nodeIds;
+        int rootNodeId = tree.allocateNodeId();
+        operations.push_back(std::make_unique<CreateNodeOp>(optValues[0].second, rootNodeId));
+        operations.push_back(std::make_unique<SetRootOp>(rootNodeId));
+        nodeIds.push_back(rootNodeId);
+
+        for (size_t i = 1; i < optValues.size(); ++i) {
+            size_t parentIdx = (i - 1) / 2;
+            bool isLeftChild = (i % 2 == 1);
+
+            if (parentIdx >= nodeIds.size() || nodeIds[parentIdx] == -1) {
+                nodeIds.push_back(-1);
+                continue;
+            }
+
+            if (!optValues[i].first) {
+                nodeIds.push_back(-1);
+                continue;
+            }
+
+            int nodeId = tree.allocateNodeId();
+            operations.push_back(std::make_unique<CreateNodeOp>(optValues[i].second, nodeId));
+            operations.push_back(std::make_unique<ConnectOp>(nodeIds[parentIdx], nodeId, isLeftChild));
             nodeIds.push_back(nodeId);
         }
     }
