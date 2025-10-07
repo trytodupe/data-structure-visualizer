@@ -35,11 +35,17 @@ public:
         }
     }
 
-    void draw(GuiVisualizer& vis) override {
-        float x = 200.0f;
-        float y = 400.0f - (50.0f * 0); // Top of stack
-        vis.drawStackElement(x, y, 100.0f, 40.0f, value, true);
-        vis.drawLabel(x + 110.0f, y + 20.0f, "Push");
+    void drawOverlay(const DataStructure& ds, ImVec2 startPos, float boxSize, float spacing) const override {
+        ImDrawList* drawList = ImGui::GetWindowDrawList();
+
+        // Highlight the top of the stack (where we're pushing)
+        float x = startPos.x;
+        float y = startPos.y;
+
+        // Draw orange highlight on top box
+        ImVec2 topLeft(x, y);
+        ImVec2 bottomRight(x + boxSize, y + boxSize);
+        drawList->AddRect(topLeft, bottomRight, IM_COL32(255, 140, 0, 255), 0.0f, 0, 3.0f);
     }
 
     nlohmann::json serialize() const override {
@@ -93,14 +99,18 @@ public:
         }
     }
 
-    void draw(GuiVisualizer& vis) override {
-        float x = 200.0f;
-        float y = 400.0f;
+    void drawOverlay(const DataStructure& ds, ImVec2 startPos, float boxSize, float spacing) const override {
+        ImDrawList* drawList = ImGui::GetWindowDrawList();
+
         if (!wasEmpty) {
-            vis.drawStackElement(x, y, 100.0f, 40.0f, poppedValue, true);
-            vis.drawLabel(x + 110.0f, y + 20.0f, "Pop");
-        } else {
-            vis.drawLabel(x, y, "Pop (empty)");
+            // Highlight the top of the stack (where we're popping from)
+            float x = startPos.x;
+            float y = startPos.y;
+
+            // Draw orange highlight on top box
+            ImVec2 topLeft(x, y);
+            ImVec2 bottomRight(x + boxSize, y + boxSize);
+            drawList->AddRect(topLeft, bottomRight, IM_COL32(255, 140, 0, 255), 0.0f, 0, 3.0f);
         }
     }
 

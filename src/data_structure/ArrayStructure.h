@@ -40,6 +40,40 @@ public:
         return oss.str();
     }
 
+    ImVec2 draw(ImVec2 startPos, float boxSize, float spacing) const override {
+        ImDrawList* drawList = ImGui::GetWindowDrawList();
+
+        for (size_t i = 0; i < currentSize; ++i) {
+            float x = startPos.x + i * (boxSize + spacing);
+            float y = startPos.y;
+
+            // Draw box
+            ImVec2 topLeft(x, y);
+            ImVec2 bottomRight(x + boxSize, y + boxSize);
+            drawList->AddRectFilled(topLeft, bottomRight, IM_COL32(100, 100, 250, 255));
+            drawList->AddRect(topLeft, bottomRight, IM_COL32(255, 255, 255, 255), 0.0f, 0, 2.0f);
+
+            // Draw value
+            char valueText[16];
+            snprintf(valueText, sizeof(valueText), "%d", data[i]);
+            ImVec2 textSize = ImGui::CalcTextSize(valueText);
+            ImVec2 textPos(x + (boxSize - textSize.x) * 0.5f, y + (boxSize - textSize.y) * 0.5f);
+            drawList->AddText(textPos, IM_COL32(255, 255, 255, 255), valueText);
+
+            // Draw index below
+            char indexText[16];
+            snprintf(indexText, sizeof(indexText), "[%zu]", i);
+            ImVec2 indexSize = ImGui::CalcTextSize(indexText);
+            ImVec2 indexPos(x + (boxSize - indexSize.x) * 0.5f, y + boxSize + 5.0f);
+            drawList->AddText(indexPos, IM_COL32(150, 150, 150, 255), indexText);
+        }
+
+        // Return the size of the drawn area
+        float width = currentSize * (boxSize + spacing);
+        float height = boxSize + 25.0f; // box + index text
+        return ImVec2(width, height);
+    }
+
     // Helper methods to maintain interface compatibility
     size_t size() const { return currentSize; }
     size_t capacity() const { return MAX_SIZE; }

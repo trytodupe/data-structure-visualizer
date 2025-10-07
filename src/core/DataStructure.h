@@ -1,6 +1,7 @@
 #pragma once
 #include <string>
 #include <memory>
+#include "imgui.h"
 
 /**
  * Abstract base class for all data structures.
@@ -26,4 +27,13 @@ public:
      * @return String describing the current state
      */
     virtual std::string getStateDescription() const = 0;
+
+    /**
+     * Draw the current state of the data structure
+     * @param startPos Starting position for drawing
+     * @param boxSize Size of each element box
+     * @param spacing Spacing between elements
+     * @return The size of the drawn area (width, height)
+     */
+    virtual ImVec2 draw(ImVec2 startPos, float boxSize, float spacing) const = 0;
 };

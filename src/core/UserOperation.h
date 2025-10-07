@@ -3,6 +3,7 @@
 #include <vector>
 #include <memory>
 #include <string>
+#include <iostream>
 
 /**
  * Composite operation consisting of multiple atomic operations.
@@ -33,22 +34,35 @@ public:
     }
 
     /**
-     * Undo all atomic operations in reverse order
+     * Undo all atomic operations in reverse order (back to front)
+     * Treat the vector as a stack - last in, first out (LIFO)
      * @param ds The data structure to restore
      */
     virtual void undo(DataStructure& ds) {
+        // Undo from back to front (last pushed operation undoes first)
         for (auto it = operations.rbegin(); it != operations.rend(); ++it) {
+            std::cout << "undoing: " << (*it)->getDescription() << std::endl;
             (*it)->undo(ds);
         }
     }
 
     /**
-     * Draw all atomic operations
-     * @param vis The visualizer to use for rendering
+     * Draw overlay for all atomic operations (currently executing one is highlighted)
+     * @param ds The data structure being operated on
+     * @param startPos Starting position where the data structure is drawn
+     * @param boxSize Size of each element box
+     * @param spacing Spacing between elements
+     * @param currentStep The current step being visualized (-1 for no step visualization)
      */
-    virtual void draw(GuiVisualizer& vis) {
-        for (auto& op : operations) {
-            op->draw(vis);
+    virtual void drawOverlay(const DataStructure& ds, ImVec2 startPos, float boxSize, float spacing, int currentStep = -1) const {
+        if (currentStep >= 0 && currentStep < (int)operations.size()) {
+            // Draw only the current step's operation
+            operations[currentStep]->drawOverlay(ds, startPos, boxSize, spacing);
+        } else {
+            // Draw all operations (when not stepping)
+            for (const auto& op : operations) {
+                op->drawOverlay(ds, startPos, boxSize, spacing);
+            }
         }
     }
 

@@ -1,6 +1,7 @@
 #pragma once
 #include <nlohmann/json.hpp>
 #include <memory>
+#include "imgui.h"
 
 class DataStructure;
 class GuiVisualizer;
@@ -26,10 +27,14 @@ public:
     virtual void undo(DataStructure& ds) = 0;
 
     /**
-     * Draw/visualize this operation
-     * @param vis The visualizer to use for rendering
+     * Draw an overlay on top of the data structure visualization
+     * This highlights the elements being modified by this operation
+     * @param ds The data structure being operated on
+     * @param startPos Starting position where the data structure is drawn
+     * @param boxSize Size of each element box
+     * @param spacing Spacing between elements
      */
-    virtual void draw(GuiVisualizer& vis) = 0;
+    virtual void drawOverlay(const DataStructure& ds, ImVec2 startPos, float boxSize, float spacing) const = 0;
 
     /**
      * Serialize this operation to JSON

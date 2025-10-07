@@ -94,95 +94,28 @@ private:
     /**
      * Render the visual representation of the array
      */
-    void renderVisual(ArrayStructure& arrayDS, VisualizationController& controller,
-                     const std::set<size_t>& modifiedIndices) {
-        ImDrawList* draw_list = ImGui::GetWindowDrawList();
-        ImVec2 canvas_pos = ImGui::GetCursorScreenPos();
-        float box_size = 60.0f;
-        float spacing = 5.0f;
+    void renderVisual(ArrayStructure &arrayDS, VisualizationController &controller,
+                      const std::set<size_t> &modifiedIndices)
+    {
+        const float box_size = 50.0f;
+        const float spacing = 10.0f;
+        ImVec2 start_pos = ImGui::GetCursorScreenPos();
 
-        // Determine if arrow should be shown (only when not in visualization phase)
-        bool showArrow = false;
-        int arrowIndex = -1;
-        ImU32 arrowColor = IM_COL32(255, 200, 0, 255);
+        // 1. Draw the data structure base state
+        ImVec2 drawnSize = arrayDS.draw(start_pos, box_size, spacing);
 
-        if (!controller.isInVisualizationPhase()) {
-            if (selectedOperation == 0 && insertIndex >= 0 && insertIndex <= (int)arrayDS.size()) {
-                showArrow = true;
-                arrowIndex = insertIndex;
-                arrowColor = IM_COL32(0, 255, 100, 255); // Green for insert
-            } else if (selectedOperation == 1 && deleteIndex >= 0 && deleteIndex < (int)arrayDS.size()) {
-                showArrow = true;
-                arrowIndex = deleteIndex;
-                arrowColor = IM_COL32(255, 100, 100, 255); // Red for delete
+        // 2. Draw operation overlay if visualizing
+        if (controller.isInVisualizationPhase())
+        {
+            const auto *currentOp = controller.getCurrentAtomicOperation();
+            if (currentOp)
+            {
+                currentOp->drawOverlay(arrayDS, start_pos, box_size, spacing);
             }
         }
 
-        // Draw array boxes
-        for (size_t i = 0; i < arrayDS.size(); ++i) {
-            ImVec2 box_min = ImVec2(canvas_pos.x + i * (box_size + spacing), canvas_pos.y);
-            ImVec2 box_max = ImVec2(box_min.x + box_size, box_min.y + box_size);
-
-            bool isSelected = (showArrow && arrowIndex == (int)i);
-            bool isBeingModified = (modifiedIndices.find(i) != modifiedIndices.end());
-
-            ImU32 boxColor;
-            if (isBeingModified) {
-                boxColor = IM_COL32(255, 180, 0, 255); // Orange for modified
-            } else if (isSelected) {
-                boxColor = (selectedOperation == 0 ? IM_COL32(50, 200, 120, 255) : IM_COL32(200, 80, 80, 255));
-            } else {
-                boxColor = IM_COL32(70, 130, 180, 255); // Default blue
-            }
-
-            draw_list->AddRectFilled(box_min, box_max, boxColor);
-            float borderThickness = isBeingModified ? 4.0f : (isSelected ? 3.0f : 2.0f);
-            draw_list->AddRect(box_min, box_max, IM_COL32(255, 255, 255, 255), 0.0f, 0, borderThickness);
-
-            // Draw value text
-            char value_text[32];
-            snprintf(value_text, sizeof(value_text), "%d", arrayDS[i]);
-            ImVec2 text_size = ImGui::CalcTextSize(value_text);
-            ImVec2 text_pos = ImVec2(
-                box_min.x + (box_size - text_size.x) * 0.5f,
-                box_min.y + (box_size - text_size.y) * 0.5f
-            );
-            draw_list->AddText(text_pos, IM_COL32(255, 255, 255, 255), value_text);
-
-            // Draw index label
-            char index_text[32];
-            snprintf(index_text, sizeof(index_text), "[%zu]", i);
-            ImVec2 index_size = ImGui::CalcTextSize(index_text);
-            ImVec2 index_pos = ImVec2(
-                box_min.x + (box_size - index_size.x) * 0.5f,
-                box_max.y + 5.0f
-            );
-            ImU32 indexColor = isBeingModified ? IM_COL32(255, 180, 0, 255) :
-                              (isSelected ? arrowColor : IM_COL32(200, 200, 200, 255));
-            draw_list->AddText(index_pos, indexColor, index_text);
-        }
-
-        // Draw arrow indicator
-        if (showArrow && arrowIndex >= 0 && arrowIndex <= (int)arrayDS.size()) {
-            float arrow_x = canvas_pos.x + arrowIndex * (box_size + spacing) + box_size * 0.5f;
-            float arrow_base_y = canvas_pos.y + box_size + 30.0f;
-
-            ImVec2 arrow_tip = ImVec2(arrow_x, canvas_pos.y + box_size + 25.0f);
-            ImVec2 arrow_left = ImVec2(arrow_x - 8.0f, arrow_base_y);
-            ImVec2 arrow_right = ImVec2(arrow_x + 8.0f, arrow_base_y);
-            ImVec2 arrow_shaft_bottom = ImVec2(arrow_x, arrow_base_y + 15.0f);
-
-            draw_list->AddLine(arrow_shaft_bottom, ImVec2(arrow_x, arrow_base_y), arrowColor, 3.0f);
-            draw_list->AddTriangleFilled(arrow_tip, arrow_left, arrow_right, arrowColor);
-
-            const char* label = (selectedOperation == 0) ? "Insert here" : "Delete this";
-            ImVec2 label_size = ImGui::CalcTextSize(label);
-            ImVec2 label_pos = ImVec2(arrow_x - label_size.x * 0.5f, arrow_shaft_bottom.y + 5.0f);
-            draw_list->AddText(label_pos, arrowColor, label);
-        }
-
-        // Reserve space
-        ImGui::Dummy(ImVec2((arrayDS.size() + 1) * (box_size + spacing), box_size + 80.0f));
+        // 3. Reserve space for the drawn area
+        ImGui::Dummy(drawnSize);
     }
 
     /**
