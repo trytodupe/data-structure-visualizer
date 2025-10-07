@@ -61,17 +61,26 @@ public:
 
         // Highlight the temp slot -> root transition
         if (tree.tempSlot && tree.tempSlot->id == nodeId) {
+            // Calculate dynamic positions
+            ImVec2 availableSpace = ImGui::GetContentRegionAvail();
+            float centerX = startPos.x + availableSpace.x * 0.5f;
+
+            // Temp slot position
             float x = startPos.x;
-            float tempSlotY = startPos.y + 400.0f;
+            float tempSlotY = startPos.y + 200.0f;  // Approximate based on tree height
+
+            // Root position
+            float rootX = centerX;
+            float rootY = startPos.y + 20.0f;
 
             // Draw arrow from temp slot to root position
             ImVec2 arrowStart(x + boxSize * 0.5f, tempSlotY);
-            ImVec2 arrowEnd(startPos.x + 400.0f, startPos.y + 50.0f);
+            ImVec2 arrowEnd(rootX, rootY + boxSize);
             drawList->AddLine(arrowStart, arrowEnd, IM_COL32(0, 255, 0, 255), 3.0f);
 
-            // Draw text
-            drawList->AddText(ImVec2(startPos.x + 200.0f, startPos.y + 200.0f),
-                             IM_COL32(0, 255, 0, 255), "Set as Root");
+            // Draw text between start and end
+            ImVec2 textPos((arrowStart.x + arrowEnd.x) * 0.5f, (arrowStart.y + arrowEnd.y) * 0.5f);
+            drawList->AddText(textPos, IM_COL32(0, 255, 0, 255), "Set as Root");
         }
     }
 
@@ -141,7 +150,7 @@ public:
 
         if (tree.tempSlot == node) {
             float x = startPos.x;
-            float tempSlotY = startPos.y + 400.0f;  // Approximate position
+            float tempSlotY = startPos.y + 200.0f;  // Approximate position based on new layout
 
             ImVec2 boxMin(x - 5.0f, tempSlotY - 5.0f);
             ImVec2 boxMax(x + boxSize + 5.0f, tempSlotY + boxSize + 5.0f);
@@ -219,7 +228,7 @@ public:
 
         if (tree.tempSlot == node) {
             float x = startPos.x;
-            float tempSlotY = startPos.y + 400.0f;
+            float tempSlotY = startPos.y + 200.0f;  // Updated to match new layout
 
             ImVec2 boxMin(x - 5.0f, tempSlotY - 5.0f);
             ImVec2 boxMax(x + boxSize + 5.0f, tempSlotY + boxSize + 5.0f);

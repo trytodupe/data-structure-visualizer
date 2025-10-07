@@ -83,26 +83,31 @@ public:
     ImVec2 draw(ImVec2 startPos, float boxSize, float spacing) const override {
         ImDrawList* drawList = ImGui::GetWindowDrawList();
 
+        // Get available space for dynamic centering
+        ImVec2 availableSpace = ImGui::GetContentRegionAvail();
+        float centerX = startPos.x + availableSpace.x * 0.5f;
+
         float maxWidth = 0.0f;
         float maxHeight = 0.0f;
 
         if (root) {
-            // Draw main tree
-            drawNode(drawList, root, startPos.x + 400.0f, startPos.y + 50.0f, 200.0f, boxSize, spacing, maxWidth, maxHeight);
+            // Draw main tree - start with root at center, initial horizontal spacing
+            float initialHSpacing = 150.0f;
+            drawNode(drawList, root, centerX, startPos.y + 20.0f, initialHSpacing, boxSize, spacing, maxWidth, maxHeight);
         } else {
             // Draw empty tree indicator
             const char* emptyText = "(empty tree)";
             ImVec2 textSize = ImGui::CalcTextSize(emptyText);
-            ImVec2 textPos(startPos.x + 200.0f, startPos.y + 50.0f);
+            ImVec2 textPos(centerX - textSize.x * 0.5f, startPos.y + 20.0f);
             drawList->AddText(textPos, IM_COL32(150, 150, 150, 255), emptyText);
             maxWidth = textSize.x;
             maxHeight = textSize.y;
         }
 
-        // Draw temp slot below the main tree
-        float tempSlotY = startPos.y + maxHeight + 100.0f;
+        // Draw temp slot below the main tree with minimal spacing
+        float tempSlotY = startPos.y + maxHeight + 40.0f;
         drawList->AddText(ImVec2(startPos.x, tempSlotY), IM_COL32(200, 200, 200, 255), "Temp Slot:");
-        tempSlotY += 30.0f;
+        tempSlotY += 25.0f;
 
         float x = startPos.x;
         // Draw temp slot box (empty or with node)
@@ -136,9 +141,9 @@ public:
             drawList->AddText(textPos, IM_COL32(100, 100, 100, 255), emptyText);
         }
 
-        maxHeight = tempSlotY + boxSize + 30.0f - startPos.y;
+        maxHeight = tempSlotY + boxSize + 5.0f - startPos.y;
 
-        return ImVec2(std::max(800.0f, maxWidth), std::max(400.0f, maxHeight));
+        return ImVec2(availableSpace.x, maxHeight);
     }
 
     /**
@@ -213,8 +218,8 @@ private:
         ImVec2 textPos(x - textSize.x * 0.5f, y + (boxSize - textSize.y) * 0.5f);
         drawList->AddText(textPos, IM_COL32(255, 255, 255, 255), valueText);
 
-        // Draw children connections and nodes
-        float childY = y + boxSize + vSpacing + 50.0f;
+        // Draw children connections and nodes with shorter vertical spacing
+        float childY = y + boxSize + 20.0f;  // Reduced from vSpacing + 50.0f
 
         if (node->left) {
             float leftX = x - hSpacing;
