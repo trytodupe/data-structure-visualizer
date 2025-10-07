@@ -50,14 +50,14 @@ public:
     }
 
     /**
-     * Get the current atomic operation being executed
-     * Returns nullptr if no operation is being executed or index is out of bounds
+     * Get the current atomic operation to be executed (shown before execution)
+     * Returns nullptr if no operation is staged or index is out of bounds
      */
     Operation* getCurrentAtomicOperation() const {
-        if (!stagedOperation || currentAtomicStep == 0 || currentAtomicStep > stagedOperation->operations.size()) {
+        if (!stagedOperation || !isVisualizing || currentAtomicStep >= stagedOperation->operations.size()) {
             return nullptr;
         }
-        return stagedOperation->operations[currentAtomicStep - 1].get();
+        return stagedOperation->operations[currentAtomicStep].get();
     }
 
     /**
@@ -88,7 +88,8 @@ public:
         ImGui::Text("Total atomic operations: %zu", stagedOperation->operations.size());
 
         if (isVisualizing) {
-            ImGui::Text("Current step: %zu / %zu", currentAtomicStep, stagedOperation->operations.size());
+            // Show current step as 1-indexed (step N means we're about to execute operation N)
+            ImGui::Text("Current step: %zu / %zu", currentAtomicStep + 1, stagedOperation->operations.size());
         }
         ImGui::Spacing();
 
@@ -104,7 +105,9 @@ public:
             }
         } else {
             if (currentAtomicStep < stagedOperation->operations.size()) {
-                if (ImGui::Button("Step (Execute Next Atomic Operation)")) {
+                // Show what operation will be executed
+                std::string buttonText = "Step (" + stagedOperation->operations[currentAtomicStep]->getDescription() + ")";
+                if (ImGui::Button(buttonText.c_str())) {
                     // Execute the current atomic operation
                     stagedOperation->operations[currentAtomicStep]->execute(*stagedDataStructure);
                     currentAtomicStep++;
