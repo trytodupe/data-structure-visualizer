@@ -22,8 +22,10 @@
 #include "core/OperationManager.h"
 #include "data_structure/ArrayStructure.h"
 #include "data_structure/StackStructure.h"
+#include "data_structure/BinaryTreeStructure.h"
 #include "operation/ArrayOps.h"
 #include "operation/StackOps.h"
+#include "operation/BinaryTreeOps.h"
 #include "visual/GuiVisualizer.h"
 #include "visual/HistoryWindow.h"
 #include "visual/VisualizerWindow.h"
@@ -152,6 +154,7 @@ int main(int, char**)
     // Data structure visualizer state
     ArrayStructure arrayDS;
     StackStructure stackDS;
+    BinaryTreeStructure treeDS;
     OperationManager opManager;
     GuiVisualizer visualizer;
     HistoryWindow historyWindow(main_scale);
@@ -221,7 +224,7 @@ int main(int, char**)
         }
 
         // Render visualizer and history windows
-        visualizerWindow.render(arrayDS, stackDS, opManager);
+        visualizerWindow.render(arrayDS, stackDS, treeDS, opManager);
         historyWindow.render(opManager);
 
         // Rendering
