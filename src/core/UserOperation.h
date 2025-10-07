@@ -3,7 +3,6 @@
 #include <vector>
 #include <memory>
 #include <string>
-#include <iostream>
 
 /**
  * Composite operation consisting of multiple atomic operations.
@@ -41,7 +40,6 @@ public:
     virtual void undo(DataStructure& ds) {
         // Undo from back to front (last pushed operation undoes first)
         for (auto it = operations.rbegin(); it != operations.rend(); ++it) {
-            std::cout << "undoing: " << (*it)->getDescription() << std::endl;
             (*it)->undo(ds);
         }
     }

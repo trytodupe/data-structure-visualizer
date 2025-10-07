@@ -4,7 +4,6 @@
 #include "../data_structure/ArrayStructure.h"
 #include "../visual/GuiVisualizer.h"
 #include <memory>
-#include <iostream>
 
 // ============================================================================
 // ATOMIC OPERATIONS
@@ -173,7 +172,6 @@ public:
         ArrayStructure& arr = dynamic_cast<ArrayStructure&>(ds);
         oldValue = arr[toIndex];
         arr[toIndex] = arr[fromIndex];
-        std::cout << oldValue << std::endl;
     }
 
     void undo(DataStructure& ds) override {
