@@ -151,8 +151,14 @@ public:
  */
 class StackInit : public UserOperation {
 public:
-    StackInit(const std::vector<int>& values)
+    StackInit(StackStructure& stack, const std::vector<int>& values)
         : UserOperation("StackInit", "Initialize stack with values") {
+        // Clear the stack directly (not using atomic operations)
+        while (!stack.data.empty()) {
+            stack.data.pop();
+        }
+
+        // Push new values
         for (int value : values) {
             operations.push_back(std::make_unique<PushOp>(value));
         }

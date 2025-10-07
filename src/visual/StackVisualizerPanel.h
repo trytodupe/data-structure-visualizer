@@ -3,9 +3,12 @@
 #include "VisualizationController.h"
 #include "../data_structure/StackStructure.h"
 #include "../operation/StackOps.h"
+#include "../core/OperationManager.h"
 #include <stack>
 #include <vector>
 #include <memory>
+#include <string>
+#include <cstring>
 
 /**
  * Panel for stack visualization and operation controls.
@@ -17,15 +20,19 @@ private:
     // Input state
     int pushValue;
     int selectedOperation;
+    char initValuesInput[256];  // Buffer for custom init values
 
 public:
     StackVisualizerPanel()
-        : pushValue(10), selectedOperation(0) {}
+        : pushValue(10), selectedOperation(0) {
+        // Default init values
+        strcpy(initValuesInput, "1, 2, 3, 4, 5");
+    }
 
     /**
      * Render the complete stack panel (visualization + controls)
      */
-    void render(StackStructure& stackDS, VisualizationController& controller) {
+    void render(StackStructure& stackDS, VisualizationController& controller, OperationManager& opManager) {
         ImGui::Text("Stack Operations:");
         ImGui::Spacing();
 
@@ -53,7 +60,7 @@ public:
         ImGui::Spacing();
 
         // Render operation controls
-        renderOperationControls(stackDS, controller);
+        renderOperationControls(stackDS, controller, opManager);
     }
 
 private:
@@ -151,38 +158,65 @@ private:
     /**
      * Render operation selection and controls
      */
-    void renderOperationControls(StackStructure& stackDS, VisualizationController& controller) {
+    void renderOperationControls(StackStructure& stackDS, VisualizationController& controller, OperationManager& opManager) {
         ImGui::Text("Select Stack Operation:");
-        const char* stackOps[] = { "Push", "Pop", "Clear", "Initialize" };
+        const char* stackOps[] = { "Initialize", "Push", "Pop"};
         ImGui::Combo("##stackOperation", &selectedOperation, stackOps, IM_ARRAYSIZE(stackOps));
         ImGui::Spacing();
 
-        if (selectedOperation == 0) { // Push
+        if (selectedOperation == 0) { // Initialize
+            ImGui::Text("Initialize Operation:");
+            ImGui::Text("Initialize stack with custom values (comma-separated)");
+            ImGui::InputText("Values##init", initValuesInput, IM_ARRAYSIZE(initValuesInput));
+            ImGui::TextColored(ImVec4(1.0f, 1.0f, 0.0f, 1.0f), "Note: This will clear undo/redo history");
+            if (ImGui::Button("Execute Initialize")) {
+                // Parse the input string to extract values
+                std::vector<int> values;
+                std::string input(initValuesInput);
+                std::string current = "";
+
+                for (char c : input) {
+                    if (c == ',' || c == ' ') {
+                        if (!current.empty()) {
+                            try {
+                                values.push_back(std::stoi(current));
+                                current = "";
+                            } catch (...) {
+                                // Skip invalid numbers
+                            }
+                        }
+                    } else if ((c >= '0' && c <= '9') || c == '-') {
+                        current += c;
+                    }
+                }
+                // Don't forget the last value
+                if (!current.empty()) {
+                    try {
+                        values.push_back(std::stoi(current));
+                    } catch (...) {
+                        // Skip invalid numbers
+                    }
+                }
+
+                if (!values.empty()) {
+                    // Clear undo/redo history BEFORE staging init operation
+                    opManager.clear();
+                    controller.stageOperation(std::make_unique<StackInit>(stackDS, values), &stackDS);
+                }
+            }
+        } else if (selectedOperation == 1) { // Push
             ImGui::Text("Push Operation:");
             ImGui::InputInt("Value##push", &pushValue);
             if (ImGui::Button("Execute Push")) {
                 controller.stageOperation(std::make_unique<StackPush>(pushValue), &stackDS);
             }
-        } else if (selectedOperation == 1) { // Pop
+        } else if (selectedOperation == 2) { // Pop
             ImGui::Text("Pop Operation:");
             ImGui::Text("Removes the top element from the stack.");
             if (ImGui::Button("Execute Pop")) {
                 if (!stackDS.data.empty()) {
                     controller.stageOperation(std::make_unique<StackPop>(), &stackDS);
                 }
-            }
-        } else if (selectedOperation == 2) { // Clear
-            ImGui::Text("Clear Operation:");
-            ImGui::Text("Removes all elements from the stack.");
-            if (ImGui::Button("Execute Clear")) {
-                controller.stageOperation(std::make_unique<StackClear>(stackDS), &stackDS);
-            }
-        } else if (selectedOperation == 3) { // Initialize
-            ImGui::Text("Initialize Operation:");
-            ImGui::Text("Initializes stack with [1, 2, 3, 4, 5].");
-            if (ImGui::Button("Execute Initialize")) {
-                std::vector<int> values = {1, 2, 3, 4, 5};
-                controller.stageOperation(std::make_unique<StackInit>(values), &stackDS);
             }
         }
     }

@@ -68,7 +68,7 @@ public:
             // === STACK TAB ===
             if (ImGui::BeginTabItem("Stack"))
             {
-                stackPanel.render(stackDS, vizController);
+                stackPanel.render(stackDS, vizController, opManager);
                 ImGui::EndTabItem();
             }
 
