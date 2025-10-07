@@ -61,7 +61,7 @@ public:
             // === ARRAY TAB ===
             if (ImGui::BeginTabItem("Array"))
             {
-                arrayPanel.render(arrayDS, vizController);
+                arrayPanel.render(arrayDS, vizController, opManager);
                 ImGui::EndTabItem();
             }
 

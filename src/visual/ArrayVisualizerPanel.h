@@ -3,8 +3,11 @@
 #include "VisualizationController.h"
 #include "../data_structure/ArrayStructure.h"
 #include "../operation/ArrayOps.h"
+#include "../core/OperationManager.h"
 #include <set>
 #include <memory>
+#include <string>
+#include <cstring>
 
 /**
  * Panel for array visualization and operation controls.
@@ -18,16 +21,20 @@ private:
     int insertValue;
     int deleteIndex;
     int selectedOperation;
+    char initValuesInput[256];  // Buffer for custom init values
 
 public:
     ArrayVisualizerPanel()
         : insertIndex(0), insertValue(99),
-          deleteIndex(0), selectedOperation(0) {}
+          deleteIndex(0), selectedOperation(0) {
+        // Default init values
+        strcpy(initValuesInput, "5, 2, 8, 1, 9");
+    }
 
     /**
      * Render the complete array panel (visualization + controls)
      */
-    void render(ArrayStructure& arrayDS, VisualizationController& controller) {
+    void render(ArrayStructure& arrayDS, VisualizationController& controller, OperationManager& opManager) {
         ImGui::Text("Array Operations:");
         ImGui::Spacing();
 
@@ -47,7 +54,7 @@ public:
         ImGui::Spacing();
 
         // Render operation controls
-        renderOperationControls(arrayDS, controller);
+        renderOperationControls(arrayDS, controller, opManager);
     }
 
 private:
@@ -121,13 +128,54 @@ private:
     /**
      * Render operation selection and controls
      */
-    void renderOperationControls(ArrayStructure& arrayDS, VisualizationController& controller) {
+    void renderOperationControls(ArrayStructure& arrayDS, VisualizationController& controller, OperationManager& opManager) {
         ImGui::Text("Select Array Operation:");
-        const char* arrayOps[] = { "Insert", "Delete", "Reset" };
+        const char* arrayOps[] = { "Init", "Insert", "Delete" };
         ImGui::Combo("##arrayOperation", &selectedOperation, arrayOps, IM_ARRAYSIZE(arrayOps));
         ImGui::Spacing();
 
-        if (selectedOperation == 0) { // Insert
+        if (selectedOperation == 0) { // Init
+            ImGui::Text("Init Operation:");
+            ImGui::Text("Initialize array with custom values (comma-separated)");
+            ImGui::InputText("Values##init", initValuesInput, IM_ARRAYSIZE(initValuesInput));
+            ImGui::TextColored(ImVec4(1.0f, 1.0f, 0.0f, 1.0f), "Note: This will clear undo/redo history");
+            if (ImGui::Button("Execute Init")) {
+                // Parse the input string to extract values
+                std::vector<int> values;
+                std::string input(initValuesInput);
+                std::string current = "";
+
+                for (char c : input) {
+                    if (c == ',' || c == ' ') {
+                        if (!current.empty()) {
+                            try {
+                                values.push_back(std::stoi(current));
+                                current = "";
+                            } catch (...) {
+                                // Skip invalid numbers
+                            }
+                        }
+                    } else if ((c >= '0' && c <= '9') || c == '-') {
+                        current += c;
+                    }
+                }
+                // Don't forget the last value
+                if (!current.empty()) {
+                    try {
+                        values.push_back(std::stoi(current));
+                    } catch (...) {
+                        // Skip invalid numbers
+                    }
+                }
+
+                if (!values.empty()) {
+                    // Clear undo/redo history BEFORE staging init operation
+                    // This makes Init the starting point with no previous history
+                    opManager.clear();
+                    controller.stageOperation(std::make_unique<ArrayInit>(values), &arrayDS);
+                }
+            }
+        } else if (selectedOperation == 1) { // Insert
             ImGui::Text("Insert Operation:");
             ImGui::InputInt("Index##insert", &insertIndex);
             ImGui::InputInt("Value##insert", &insertValue);
@@ -136,20 +184,13 @@ private:
                     controller.stageOperation(std::make_unique<ArrayInsert>(arrayDS, insertIndex, insertValue), &arrayDS);
                 }
             }
-        } else if (selectedOperation == 1) { // Delete
+        } else if (selectedOperation == 2) { // Delete
             ImGui::Text("Delete Operation:");
             ImGui::InputInt("Index##delete", &deleteIndex);
             if (ImGui::Button("Execute Delete")) {
                 if (deleteIndex >= 0 && deleteIndex < (int)arrayDS.size()) {
                     controller.stageOperation(std::make_unique<ArrayDelete>(arrayDS, deleteIndex), &arrayDS);
                 }
-            }
-        } else if (selectedOperation == 2) { // Reset
-            ImGui::Text("Reset Operation:");
-            ImGui::Text("Resets array to [5, 2, 8, 1, 9].");
-            if (ImGui::Button("Execute Reset")) {
-                std::vector<int> resetValues = {5, 2, 8, 1, 9};
-                controller.stageOperation(std::make_unique<ArrayInit>(resetValues), &arrayDS);
             }
         }
     }
